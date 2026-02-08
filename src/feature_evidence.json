@@ -1,0 +1,24 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-ensure-the-app-automatically-selects-and-stays-on-the-grok-provider-normal-mode-whenever-grok-configuration-is-detected-via-env-vars-or-saved-runtime-config-and-never-remains-in-demo-mode-due-to-a-previously-persisted-provider-selection-unless-the-user-has-explicitly-opted-into-demo-mode",
+      "featureTitle": "Ensure the app automatically selects and stays on the Grok provider (normal mode) whenever Grok configuration is detected (via env vars or saved runtime config), and never remains in Demo mode due to a previously persisted provider selection unless the user has explicitly opted into Demo mode.",
+      "files": [
+        "frontend/src/hooks/useVideoProvider.ts",
+        "frontend/src/providers/videoProvider.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-27"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

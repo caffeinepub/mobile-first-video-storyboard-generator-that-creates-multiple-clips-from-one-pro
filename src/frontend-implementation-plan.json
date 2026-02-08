@@ -1,0 +1,30 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Force Grok provider as default when configured (respect explicit Demo opt-in)",
+  "requirements": [
+    {
+      "id": "REQ-27",
+      "summary": "Automatically select and remain on Grok whenever Grok configuration is available, unless the user has explicitly opted into Demo mode.",
+      "acceptanceCriteria": [
+        "Given valid Grok configuration is available (env vars or saved runtime config), on a fresh page load the active provider is Grok and the UI shows Grok as Active.",
+        "If localStorage contains a previously persisted provider selection of \"demo\" but there is no explicit Demo opt-in flag, the app switches to Grok automatically when Grok is configured.",
+        "If the user explicitly opts into Demo mode while Grok is configured, the app remains in Demo mode across reloads until the user switches back to Grok (i.e., auto-switching must not override an explicit Demo choice).",
+        "If Grok configuration becomes available while the app is open (runtime config saved), the provider switches to Grok immediately unless the user explicitly opted into Demo mode.",
+        "All user-facing messaging related to provider state/configuration remains in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/providers/videoProvider.ts",
+          "operation": "modify",
+          "description": "Harden provider initialization and reconciliation so that whenever Grok is configured, the app forces provider='grok' unless an explicit Demo opt-in flag is set. Add a migration/reconciliation step that ignores any previously persisted 'demo' selection when the explicit Demo opt-in flag is absent, and overwrites/removes stale persisted provider storage accordingly to prevent the UI from staying in Demo due to legacy localStorage values."
+        },
+        {
+          "path": "frontend/src/hooks/useVideoProvider.ts",
+          "operation": "modify",
+          "description": "Ensure provider state is reconciled on initial mount (in addition to reacting to runtime config change events) so a fresh load immediately reflects Grok as Active when configured, and legacy localStorage 'demo' selections without explicit Demo opt-in are corrected in the UI without user action."
+        }
+      ]
+    }
+  ]
+}

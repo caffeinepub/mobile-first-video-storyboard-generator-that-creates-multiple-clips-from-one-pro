@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.75rem;
+        /* Warm coral/orange theme - distinct from blue/purple */
+        --background: 0.98 0 0;
+        --foreground: 0.2 0 0;
+        --card: 1 0 0;
+        --card-foreground: 0.2 0 0;
+        --popover: 1 0 0;
+        --popover-foreground: 0.2 0 0;
+        /* Primary: Vibrant coral */
+        --primary: 0.65 0.19 25;
+        --primary-foreground: 1 0 0;
+        /* Secondary: Warm peach */
+        --secondary: 0.92 0.08 45;
+        --secondary-foreground: 0.25 0 0;
+        --muted: 0.95 0.02 60;
+        --muted-foreground: 0.5 0.02 30;
+        /* Accent: Sunset orange */
+        --accent: 0.72 0.18 35;
+        --accent-foreground: 1 0 0;
+        --destructive: 0.577 0.245 27.325;
+        --destructive-foreground: 0.985 0 0;
+        --border: 0.9 0.02 40;
+        --input: 0.9 0.02 40;
+        --ring: 0.65 0.19 25;
+        --chart-1: 0.65 0.19 25;
+        --chart-2: 0.72 0.18 35;
+        --chart-3: 0.82 0.15 50;
+        --chart-4: 0.6 0.22 15;
+        --chart-5: 0.55 0.24 10;
+        --sidebar: 0.985 0 0;
+        --sidebar-foreground: 0.2 0 0;
+        --sidebar-primary: 0.65 0.19 25;
+        --sidebar-primary-foreground: 1 0 0;
+        --sidebar-accent: 0.92 0.08 45;
+        --sidebar-accent-foreground: 0.25 0 0;
+        --sidebar-border: 0.9 0.02 40;
+        --sidebar-ring: 0.65 0.19 25;
+    }
+
+    .dark {
+        --background: 0.15 0.02 30;
+        --foreground: 0.95 0.02 50;
+        --card: 0.2 0.03 25;
+        --card-foreground: 0.95 0.02 50;
+        --popover: 0.18 0.03 28;
+        --popover-foreground: 0.95 0.02 50;
+        /* Primary: Bright coral for dark mode */
+        --primary: 0.72 0.2 30;
+        --primary-foreground: 0.98 0 0;
+        --secondary: 0.28 0.05 35;
+        --secondary-foreground: 0.95 0.02 50;
+        --muted: 0.25 0.04 32;
+        --muted-foreground: 0.65 0.03 40;
+        --accent: 0.35 0.08 38;
+        --accent-foreground: 0.95 0.02 50;
+        --destructive: 0.65 0.22 25;
+        --destructive-foreground: 0.98 0 0;
+        --border: 0.3 0.04 30;
+        --input: 0.3 0.04 30;
+        --ring: 0.72 0.2 30;
+        --chart-1: 0.72 0.2 30;
+        --chart-2: 0.82 0.18 40;
+        --chart-3: 0.88 0.15 55;
+        --chart-4: 0.65 0.22 20;
+        --chart-5: 0.6 0.24 15;
+        --sidebar: 0.18 0.03 28;
+        --sidebar-foreground: 0.95 0.02 50;
+        --sidebar-primary: 0.72 0.2 30;
+        --sidebar-primary-foreground: 0.98 0 0;
+        --sidebar-accent: 0.28 0.05 35;
+        --sidebar-accent-foreground: 0.95 0.02 50;
+        --sidebar-border: 0.3 0.04 30;
+        --sidebar-ring: 0.72 0.2 30;
+    }
+
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+    
+    /* Mobile-optimized typography */
+    html {
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Comfortable tap targets for mobile */
+    button, a, input, textarea, select {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Safe area padding for mobile devices */
+    .safe-area-inset {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    .safe-area-inset-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+

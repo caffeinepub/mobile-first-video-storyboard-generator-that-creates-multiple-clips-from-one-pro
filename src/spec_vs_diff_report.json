@@ -1,0 +1,15 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-08T05:07:52.095Z",
+  "summary": "REQ-27 appears implemented via frontend provider-state reconciliation: on mount and on runtime Grok config changes, the app re-evaluates Grok configuration and auto-selects Grok unless an explicit Demo opt-in flag is set; stale persisted \"demo\" selection is cleaned up to avoid unintended Demo mode persistence.",
+  "missing_requirements": [],
+  "hallucinated_features": [],
+  "confidence": 0.74,
+  "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/hooks/useVideoProvider.ts",
+    "frontend/src/providers/videoProvider.ts",
+    "project_state.json"
+  ]
+}

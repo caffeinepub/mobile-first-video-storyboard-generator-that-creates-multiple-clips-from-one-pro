@@ -1,0 +1,295 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 17,
+  "summary": "Build a Grok AI-powered website that generates one or multiple short video clips from a prompt (optionally with uploaded reference images), and composes them into a ~1-minute video, with an easy-to-use mobile-first UI.",
+  "architectural_notes": [
+    "Add an image-upload input pipeline (UI + validation + storage/transfer strategy) so uploaded reference images can be provided to the video generation provider.",
+    "Set Grok AI as the default/primary generation provider in the pluggable provider interface; keep other providers optional/configurable.",
+    "Add an environment/config toggle to switch between demo/placeholder generation and real Grok AI API calls; default to real Grok in non-dev deployments.",
+    "Production deployments should default to real Grok API calls when Grok configuration (API key/endpoint) is present; demo mode should only be enabled when explicitly selected or when Grok is not configured.",
+    "Support theming (light/dark) in the UI with a persisted user preference (e.g., local storage) and sensible default."
+  ],
+  "known_issues": [
+    "App is currently running in Demo mode because Grok AI configuration is not set/being detected; needs proper Grok config to force real provider path.",
+    "Deployment/domain name validation error: domain 'Landens_grok_ai' rejected because it contains an underscore; domains must be 5–50 chars and only letters, numbers, hyphens."
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-create-a-mobile-first-ui-that-lets-a-user-enter-a-single-prompt-choose-how-many-clips-to-generate-and-target-a-60-second-final-video-e-g-6-clips-x-10s-with-clear-primary-actions-generate-preview-download",
+      "title": "Create a mobile-first UI that lets a user enter a single prompt, choose how many clips to generate, and target a ~60-second final video (e.g., 6 clips x 10s), with clear primary actions: Generate, Preview, Download.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-multi-clip-generation-flow-that-from-one-prompt-produces-a-list-of-clip-segments-each-with-its-own-derived-sub-prompt-story-beat-displays-per-clip-status-queued-generating-done-failed-and-allows-retry-of-a-failed-clip",
+      "title": "Implement a multi-clip generation flow that, from one prompt, produces a list of clip “segments” (each with its own derived sub-prompt/story beat), displays per-clip status (queued/generating/done/failed), and allows retry of a failed clip.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-client-side-composition-of-multiple-short-video-clips-into-a-single-1-minute-preview-and-downloadable-file-with-an-in-app-preview-player-for-the-final-composed-result",
+      "title": "Implement client-side composition of multiple short video clips into a single ~1-minute preview and downloadable file, with an in-app preview player for the final composed result.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-clear-generation-progress-experience-for-mobile-stepper-prompt-clips-compose-download-compact-progress-indicators-and-accessible-error-states",
+      "title": "Add a clear “generation progress” experience for mobile: stepper (Prompt → Clips → Compose → Download), compact progress indicators, and accessible error states.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-one-coherent-distinct-visual-theme-colors-typography-spacing-and-component-styling-and-apply-it-consistently-across-all-screens-avoid-a-blue-purple-default-look",
+      "title": "Add one coherent, distinct visual theme (colors, typography, spacing, and component styling) and apply it consistently across all screens; avoid a blue/purple default look.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-pluggable-video-generation-provider-interface-on-the-frontend-that-can-run-in-a-demo-mode-no-external-ai-by-generating-placeholder-sample-clips-and-is-structured-so-a-generic-rest-endpoint-can-be-configured-later-without-changing-the-ui-flow",
+      "title": "Implement a pluggable “video generation provider” interface on the frontend that can run in a demo mode (no external AI) by generating placeholder/sample clips, and is structured so a generic REST endpoint can be configured later without changing the UI flow.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-static-generated-images-for-branding-logo-subtle-background-hero-and-render-them-in-the-ui-from-frontend-public-assets-generated-no-backend-routing-for-images",
+      "title": "Add static generated images for branding (logo + subtle background/hero) and render them in the UI from frontend/public/assets/generated (no backend routing for images).",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-prompt-configuration-ui-to-allow-generating-a-single-clip-1-by-lowering-the-minimum-clip-count-from-3-to-1-and-ensure-all-related-user-facing-copy-remains-correct-for-both-1-clip-and-multiple-clips",
+      "title": "Update the prompt configuration UI to allow generating a single clip (1) by lowering the minimum clip count from 3 to 1, and ensure all related user-facing copy remains correct for both 1 clip and multiple clips.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-15-second-cap-on-per-clip-duration-in-the-prompt-configuration-ui-by-allowing-per-clip-duration-to-be-set-up-to-60-seconds-and-ensure-the-selected-value-is-used-throughout-generation-and-session-creation",
+      "title": "Remove the 15-second cap on per-clip duration in the prompt configuration UI by allowing per-clip duration to be set up to 60 seconds, and ensure the selected value is used throughout generation and session creation.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-reference-image-upload-capability-on-the-prompt-step-that-lets-users-select-one-or-more-images-e-g-photos-of-other-people-preview-them-remove-individual-images-and-keep-the-selection-associated-with-the-current-generation-run",
+      "title": "Add a reference image upload capability on the Prompt step that lets users select one or more images (e.g., photos of other people), preview them, remove individual images, and keep the selection associated with the current generation run.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-generation-flow-so-the-selected-reference-images-are-passed-through-the-segment-derivation-and-clip-generation-pipeline-provider-api-as-optional-inputs",
+      "title": "Update the frontend generation flow so the selected reference images are passed through the segment-derivation and clip-generation pipeline (provider API) as optional inputs.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-grok-ai-provider-path-in-the-existing-pluggable-frontend-provider-layer-and-make-grok-the-default-provider-used-for-segment-derivation-and-clip-generation",
+      "title": "Implement a Grok AI provider path in the existing pluggable frontend provider layer and make Grok the default provider used for segment derivation and clip generation.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-current-behavior-where-grok-generation-failures-silently-switch-the-app-into-demo-mode-when-the-provider-is-set-to-grok-errors-from-grok-segment-derivation-or-clip-generation-must-be-surfaced-to-the-user-and-to-segment-statuses-without-changing-the-selected-provider-automatically",
+      "title": "Remove the current behavior where Grok generation failures silently switch the app into demo mode. When the provider is set to Grok, errors from Grok segment derivation or clip generation must be surfaced to the user (and to segment statuses) without changing the selected provider automatically.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-grok-the-explicit-default-when-grok-configuration-is-present-and-ensure-the-app-is-only-in-demo-mode-when-grok-is-not-configured-or-the-user-explicitly-chooses-demo-mode",
+      "title": "Make Grok the explicit default when Grok configuration is present, and ensure the app is only in demo mode when Grok is not configured or the user explicitly chooses demo mode.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-user-facing-provider-control-in-the-prompt-step-that-clearly-indicates-whether-generation-will-use-grok-or-demo-and-allows-switching-to-demo-mode-as-an-explicit-opt-in-while-keeping-grok-as-the-recommended-default-option-when-configured",
+      "title": "Add a user-facing provider control in the Prompt step that clearly indicates whether generation will use Grok or Demo, and allows switching to Demo mode as an explicit opt-in (while keeping Grok as the recommended/default option when configured).",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-persist-the-user-s-selected-provider-grok-vs-demo-on-the-client-so-that-a-user-who-explicitly-opts-into-demo-mode-stays-in-demo-mode-across-page-reloads-without-affecting-other-users",
+      "title": "Persist the user’s selected provider (Grok vs Demo) on the client so that a user who explicitly opts into Demo mode stays in Demo mode across page reloads, without affecting other users.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-runtime-grok-configuration-path-so-users-can-provide-the-grok-api-endpoint-and-api-key-in-the-ui-and-persist-them-on-the-client-allowing-the-app-to-detect-grok-as-configured-and-switch-out-of-demo-mode-without-requiring-build-time-environment-variables",
+      "title": "Add a runtime Grok configuration path so users can provide the Grok API endpoint and API key in the UI (and persist them on the client), allowing the app to detect Grok as configured and switch out of Demo mode without requiring build-time environment variables.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-grok-configuration-detection-to-support-both-build-time-env-vars-vite-grok-api-endpoint-vite-grok-api-key-and-the-new-runtime-user-provided-configuration-with-a-single-consistent-source-of-truth-used-by-isgrokconfigured-and-provider-initialization",
+      "title": "Update Grok configuration detection to support both build-time env vars (VITE_GROK_API_ENDPOINT, VITE_GROK_API_KEY) and the new runtime user-provided configuration, with a single consistent source of truth used by isGrokConfigured() and provider initialization.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-adjust-provider-selection-ui-messaging-so-that-when-grok-is-not-configured-it-guides-users-to-configure-grok-either-via-runtime-settings-or-via-environment-variables-and-when-grok-becomes-configured-it-prompts-the-user-to-switch-to-grok-without-forcing-a-switch-if-they-explicitly-chose-demo",
+      "title": "Adjust provider-selection UI messaging so that when Grok is not configured it guides users to configure Grok either via runtime settings or via environment variables, and when Grok becomes configured it prompts the user to switch to Grok (without forcing a switch if they explicitly chose Demo).",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-app-automatically-uses-the-grok-provider-normal-mode-whenever-grok-configuration-is-detected-via-env-vars-or-saved-runtime-config-and-do-not-remain-in-demo-mode-due-to-a-previously-persisted-default-selection",
+      "title": "Ensure the app automatically uses the Grok provider (normal mode) whenever Grok configuration is detected (via env vars or saved runtime config), and do not remain in Demo mode due to a previously persisted default selection.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-persist-and-honor-an-explicit-user-opt-in-to-demo-mode-separately-from-the-default-fallback-provider-behavior-so-that-auto-switching-to-grok-does-not-override-a-deliberate-demo-selection-when-grok-is-configured",
+      "title": "Persist and honor an explicit user opt-in to Demo mode separately from the default/fallback provider behavior, so that auto-switching to Grok does not override a deliberate Demo selection when Grok is configured.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-when-a-user-saves-valid-runtime-grok-settings-in-the-prompt-step-automatically-switch-the-provider-to-grok-normal-mode-immediately-unless-the-user-explicitly-opted-into-demo-mode-and-update-any-user-facing-messaging-accordingly-english",
+      "title": "When a user saves valid runtime Grok settings in the Prompt step, automatically switch the provider to Grok (normal mode) immediately (unless the user explicitly opted into Demo mode) and update any user-facing messaging accordingly (English).",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-user-facing-dark-mode-toggle-and-persist-the-user-s-theme-preference-on-the-client-so-it-is-applied-across-page-reloads",
+      "title": "Add a user-facing Dark Mode toggle and persist the user’s theme preference on the client so it is applied across page reloads.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-increase-the-maximum-allowed-per-clip-duration-to-120-seconds-2-minutes-and-ensure-the-selected-value-is-used-throughout-generation-and-session-creation",
+      "title": "Increase the maximum allowed per-clip duration to 120 seconds (2 minutes) and ensure the selected value is used throughout generation and session creation.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-total-duration-validation-and-user-facing-copy-so-that-a-single-clip-run-can-be-valid-up-to-120-seconds-while-preserving-the-existing-60-second-validation-for-multi-clip-runs",
+      "title": "Update total-duration validation and user-facing copy so that a single-clip run can be valid up to 120 seconds, while preserving the existing ~60-second validation for multi-clip runs.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-app-automatically-selects-and-stays-on-the-grok-provider-normal-mode-whenever-grok-configuration-is-detected-via-env-vars-or-saved-runtime-config-and-never-remains-in-demo-mode-due-to-a-previously-persisted-provider-selection-unless-the-user-has-explicitly-opted-into-demo-mode",
+      "title": "Ensure the app automatically selects and stays on the Grok provider (normal mode) whenever Grok configuration is detected (via env vars or saved runtime config), and never remains in Demo mode due to a previously persisted provider selection unless the user has explicitly opted into Demo mode.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Generate multiple video clips from a single user prompt and combine them into a ~1-minute final video",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Design an easy-to-use, mobile-first UI for prompt input, generation progress, preview, and download/share",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Provide a backend Motoko job model for “video generation sessions” including: session id, owner principal (if logged in), original prompt, derived segment prompts, desired per-clip duration, timestamps, and per-clip status; expose canister methods to create a session, update/read session state, and list a user’s sessions.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Allow users to set per-clip duration up to 60 seconds (remove current 15s cap)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Allow generating a single clip/video (1 clip) as an option instead of requiring multiple clips",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Allow users to upload images (e.g., photos of other people) to use as reference/input for video clip generation",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Use Grok AI as the primary/default AI provider for generation (not just demo/placeholder generation)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Move the app out of Grok AI demo/placeholder mode by wiring the generation flow to the real Grok AI provider path (keep demo mode optional/configurable)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Add a user-selectable Dark Mode (theme toggle) for the UI",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Increase the maximum allowed per-clip duration to 2 minutes (120s)",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Mobile-first video storyboard generator that creates multiple clips from one prompt and composes ~1-minute video",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

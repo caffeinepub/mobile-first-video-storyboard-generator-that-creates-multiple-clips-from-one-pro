@@ -1,2 +1,3 @@
-# mobile-first-video-storyboard-generator-that-creates-multiple-clips-from-one-pro
-Exported from Caffeine project: Mobile-first video storyboard generator that creates multiple clips from one prompt and composes ~1-minute video
+## 
+
+To run app build and run docker image: `docker build -t app . docker run -it --network host app`

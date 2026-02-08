@@ -1,0 +1,40 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-08T05:07:52.098Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 1,
+    "implemented": 1,
+    "items": [
+      {
+        "id": "REQ-27",
+        "summary": "Ensure the app automatically selects and stays on the Grok provider (normal mode) whenever Grok configuration is detected (via env vars or saved runtime config), and never remains in Demo mode due to a previously persisted provider selection unless the user has explicitly opted into Demo mode.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/providers/videoProvider.ts",
+          "frontend/src/hooks/useVideoProvider.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/providers/videoProvider.ts",
+          "frontend/src/hooks/useVideoProvider.ts"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/hooks/useVideoProvider.ts",
+    "frontend/src/providers/videoProvider.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}
