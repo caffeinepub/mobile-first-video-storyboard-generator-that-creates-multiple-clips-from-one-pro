@@ -6,15 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { calculateTotalDuration, isWithinTolerance, getValidationMessage } from '../lib/duration';
-import { Sparkles, Clock, Film, AlertCircle, Zap, Settings, Check, X } from 'lucide-react';
+import { Sparkles, Clock, Film, AlertCircle, Settings, Check, X, AlertTriangle } from 'lucide-react';
 import ReferenceImageUpload from './ReferenceImageUpload';
 import type { ReferenceImageFile } from '../lib/referenceImages';
-import type { VideoProvider } from '../providers/videoProvider';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { saveRuntimeConfig, clearRuntimeConfig, loadRuntimeConfig } from '../lib/grokRuntimeConfig';
-import { isEndpointFormatValid } from '../lib/grokEndpoint';
+import { saveRuntimeConfig, clearRuntimeConfig, loadRuntimeConfig, hasLegacyEndpoint, getLegacyEndpointMessage } from '../lib/grokRuntimeConfig';
+import { isEndpointFormatValid, CANONICAL_GROK_ENDPOINT } from '../lib/grokEndpoint';
 import { toast } from 'sonner';
 
 interface PromptComposerProps {
@@ -26,10 +24,7 @@ interface PromptComposerProps {
   onPerClipDurationChange: (value: number) => void;
   referenceImages: ReferenceImageFile[];
   onReferenceImagesChange: (images: ReferenceImageFile[]) => void;
-  provider: VideoProvider;
-  onProviderChange: (provider: VideoProvider) => void;
   isGrokConfigured: boolean;
-  explicitDemoOptIn?: boolean;
 }
 
 export default function PromptComposer({
@@ -41,10 +36,7 @@ export default function PromptComposer({
   onPerClipDurationChange,
   referenceImages,
   onReferenceImagesChange,
-  provider,
-  onProviderChange,
-  isGrokConfigured,
-  explicitDemoOptIn = false
+  isGrokConfigured
 }: PromptComposerProps) {
   const totalDuration = calculateTotalDuration(clipCount, perClipDuration);
   const withinTolerance = isWithinTolerance(totalDuration, clipCount);
@@ -54,6 +46,9 @@ export default function PromptComposer({
   const [runtimeEndpoint, setRuntimeEndpoint] = useState('');
   const [runtimeApiKey, setRuntimeApiKey] = useState('');
   const [endpointError, setEndpointError] = useState('');
+
+  const legacyEndpoint = hasLegacyEndpoint();
+  const legacyMessage = getLegacyEndpointMessage();
 
   const handleEndpointChange = (value: string) => {
     setRuntimeEndpoint(value);
@@ -77,7 +72,6 @@ export default function PromptComposer({
       setRuntimeEndpoint('');
       setRuntimeApiKey('');
       setEndpointError('');
-      // Provider will auto-switch to Grok via the config change subscription
     } else {
       setEndpointError(result.error || 'Failed to save configuration');
       toast.error(result.error || 'Failed to save configuration');
@@ -103,11 +97,17 @@ export default function PromptComposer({
     setShowRuntimeConfig(true);
   };
 
-  const handleSwitchToGrok = () => {
-    if (isGrokConfigured) {
-      onProviderChange('grok');
-      toast.success('Switched to Grok AI');
+  const handleFixLegacyEndpoint = () => {
+    const config = loadRuntimeConfig();
+    if (config) {
+      setRuntimeEndpoint(CANONICAL_GROK_ENDPOINT);
+      setRuntimeApiKey(config.apiKey);
+    } else {
+      setRuntimeEndpoint(CANONICAL_GROK_ENDPOINT);
+      setRuntimeApiKey('');
     }
+    setEndpointError('');
+    setShowRuntimeConfig(true);
   };
 
   return (
@@ -127,51 +127,41 @@ export default function PromptComposer({
       <Card className="border-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" />
-            Provider
+            <Settings className="w-5 h-5 text-primary" />
+            Grok AI Configuration
           </CardTitle>
           <CardDescription>
-            Choose how your video clips will be generated
+            Configure your Grok AI settings to generate videos
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <RadioGroup value={provider} onValueChange={(value) => onProviderChange(value as VideoProvider)}>
-            <div className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent/50 transition-colors">
-              <RadioGroupItem value="grok" id="provider-grok" disabled={!isGrokConfigured} />
-              <Label 
-                htmlFor="provider-grok" 
-                className={`flex-1 cursor-pointer ${!isGrokConfigured ? 'opacity-50' : ''}`}
-              >
-                <div className="font-medium">Grok AI</div>
-                <div className="text-sm text-muted-foreground">
-                  AI-powered video generation
-                </div>
-              </Label>
-              {provider === 'grok' && (
-                <Badge variant="default">Active</Badge>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent/50 transition-colors">
-              <RadioGroupItem value="demo" id="provider-demo" />
-              <Label htmlFor="provider-demo" className="flex-1 cursor-pointer">
-                <div className="font-medium">Demo Mode</div>
-                <div className="text-sm text-muted-foreground">
-                  Placeholder clips for testing
-                </div>
-              </Label>
-              {provider === 'demo' && (
-                <Badge variant="secondary">Active</Badge>
-              )}
-            </div>
-          </RadioGroup>
+          {legacyEndpoint && legacyMessage && (
+            <Alert className="border-amber-500/50 bg-amber-500/5">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <AlertTitle className="text-amber-900 dark:text-amber-100">
+                Endpoint Update Required
+              </AlertTitle>
+              <AlertDescription className="text-amber-900 dark:text-amber-100 text-sm space-y-3">
+                <p>{legacyMessage}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleFixLegacyEndpoint}
+                  className="mt-2"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Update to {CANONICAL_GROK_ENDPOINT}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-          {!isGrokConfigured && (
+          {!isGrokConfigured && !legacyEndpoint && (
             <Alert className="border-amber-500/50 bg-amber-500/5">
               <AlertCircle className="w-4 h-4 text-amber-500" />
               <AlertDescription className="text-amber-900 dark:text-amber-100 text-sm space-y-3">
                 <p>
-                  Grok AI is not configured. To enable AI generation, you can either:
+                  Grok AI must be configured to generate videos. You can either:
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li>Configure runtime settings below (recommended for quick setup)</li>
@@ -190,7 +180,7 @@ export default function PromptComposer({
             </Alert>
           )}
 
-          {isGrokConfigured && !showRuntimeConfig && (
+          {isGrokConfigured && !showRuntimeConfig && !legacyEndpoint && (
             <div className="flex items-center justify-between p-3 rounded-lg border bg-green-500/5 border-green-500/50">
               <div className="flex items-center gap-2 text-sm text-green-900 dark:text-green-100">
                 <Check className="w-4 h-4" />
@@ -232,7 +222,7 @@ export default function PromptComposer({
                   <Input
                     id="grok-endpoint"
                     type="text"
-                    placeholder="https://api.example.com/v1/generate"
+                    placeholder={CANONICAL_GROK_ENDPOINT}
                     value={runtimeEndpoint}
                     onChange={(e) => handleEndpointChange(e.target.value)}
                     className={endpointError ? 'border-destructive' : ''}
@@ -246,7 +236,7 @@ export default function PromptComposer({
                   {!endpointError && runtimeEndpoint && !isEndpointFormatValid(runtimeEndpoint) && (
                     <p className="text-xs text-muted-foreground flex items-start gap-1">
                       <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      <span>Endpoint must start with http:// or https://</span>
+                      <span>Endpoint must start with http:// or https:// (e.g., {CANONICAL_GROK_ENDPOINT})</span>
                     </p>
                   )}
                 </div>
@@ -286,24 +276,6 @@ export default function PromptComposer({
                 Configuration is stored locally in your browser and will persist across sessions.
               </p>
             </div>
-          )}
-
-          {provider === 'demo' && isGrokConfigured && explicitDemoOptIn && (
-            <Alert className="border-blue-500/50 bg-blue-500/5">
-              <AlertCircle className="w-4 h-4 text-blue-500" />
-              <AlertDescription className="text-blue-900 dark:text-blue-100 text-sm">
-                <div className="flex items-center justify-between">
-                  <span>You're using Demo Mode by choice. Grok AI is available.</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleSwitchToGrok}
-                  >
-                    Switch to Grok
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
           )}
         </CardContent>
       </Card>
@@ -382,28 +354,17 @@ export default function PromptComposer({
           </div>
 
           <div className="pt-4 border-t">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Total Duration</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{totalDuration}s</span>
-                {withinTolerance ? (
-                  <Badge variant="default" className="gap-1">
-                    <Check className="w-3 h-3" />
-                    Valid
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive" className="gap-1">
-                    <X className="w-3 h-3" />
-                    Invalid
-                  </Badge>
-                )}
-              </div>
+              <Badge variant={withinTolerance ? 'outline' : 'destructive'}>
+                {totalDuration}s
+              </Badge>
             </div>
-            {!withinTolerance && validationMessage && (
-              <p className="text-xs text-destructive mt-2">
+            {validationMessage && (
+              <p className={`text-xs ${withinTolerance ? 'text-muted-foreground' : 'text-destructive'}`}>
                 {validationMessage}
               </p>
             )}

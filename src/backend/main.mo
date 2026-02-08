@@ -1,13 +1,10 @@
 import Time "mo:core/Time";
 import Map "mo:core/Map";
-import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Array "mo:core/Array";
 import Runtime "mo:core/Runtime";
 import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
-
-
 
 actor {
   let MAX_CLIP_DURATION_SECONDS = 120;
@@ -71,7 +68,6 @@ actor {
 
   var nextSessionId = 1;
   var nextSegmentId = 1;
-
   let sessions = Map.empty<VideoSessionId, VideoSession>();
 
   type VideoSessionSummary = {

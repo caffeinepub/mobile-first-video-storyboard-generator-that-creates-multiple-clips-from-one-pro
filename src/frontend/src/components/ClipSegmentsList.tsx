@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Clock, AlertCircle, RefreshCw, Film, ArrowLeft } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { CheckCircle2, Clock, AlertCircle, RefreshCw, Film, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import type { PublicSegment } from '../backend';
 import type { ClipData } from '../providers/videoProvider';
+import { useLiveGenerationProgress } from '../hooks/useLiveGenerationProgress';
+import ClipVideoPreview from './ClipVideoPreview';
 
 interface ClipSegmentsListProps {
   segments: PublicSegment[];
@@ -22,8 +26,8 @@ export default function ClipSegmentsList({
   generationError,
   onBackToPrompt
 }: ClipSegmentsListProps) {
-  const completedCount = segments.filter(s => s.status.__kind__ === 'completed').length;
-  const progress = segments.length > 0 ? (completedCount / segments.length) * 100 : 0;
+  const { progress, label } = useLiveGenerationProgress(segments);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   const getStatusIcon = (status: PublicSegment['status']) => {
     switch (status.__kind__) {
@@ -73,22 +77,48 @@ export default function ClipSegmentsList({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="w-5 h-5" />
-              Error Details
+              Error Summary
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="destructive">
               <AlertDescription className="text-sm">
-                {generationError}
+                The video generation service encountered an error. This is usually caused by incorrect configuration or network issues.
               </AlertDescription>
             </Alert>
 
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-muted-foreground">
+            <Collapsible open={showTechnicalDetails} onOpenChange={setShowTechnicalDetails}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Show technical details
+                  </span>
+                  {showTechnicalDetails ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="p-3 rounded-lg bg-muted border text-xs font-mono break-all whitespace-pre-wrap max-h-48 overflow-y-auto">
+                  {generationError}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <p className="text-sm font-medium text-muted-foreground">
                 To resolve this issue:
               </p>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                <li>Check your provider configuration (Grok settings or environment variables)</li>
+                <li>Verify your Grok endpoint is set to <code className="text-xs bg-muted px-1 py-0.5 rounded">https://api.x.ai/v1</code></li>
+                <li>Check that your API key is correct and has not expired</li>
                 <li>Verify your prompt and settings are valid</li>
                 <li>If using reference images, try removing them or using different images</li>
                 <li>Try again with different settings</li>
@@ -117,89 +147,91 @@ export default function ClipSegmentsList({
           <Film className="w-8 h-8 text-primary" />
         </div>
         <h2 className="text-3xl font-display font-bold tracking-tight">
-          Generating {segments.length === 1 ? 'Clip' : 'Clips'}
+          Generating Clips
         </h2>
-        <p className="text-muted-foreground">
-          {completedCount} of {segments.length} {segments.length === 1 ? 'clip' : 'clips'} completed
+        <p className="text-muted-foreground max-w-md mx-auto">
+          Your video clips are being created
         </p>
       </div>
 
       <Card className="border-2">
         <CardHeader>
           <CardTitle>Overall Progress</CardTitle>
-          <CardDescription>
-            {segments.length === 1 ? 'Your clip is being generated' : 'Each clip is being generated independently'}
-          </CardDescription>
+          <CardDescription>{label}</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Progress value={progress} className="h-3" />
-            <p className="text-sm text-muted-foreground text-center">
-              {Math.round(progress)}% complete
-            </p>
-          </div>
+        <CardContent className="space-y-3">
+          <Progress value={progress} className="h-2" />
+          <p className="text-sm text-center text-muted-foreground">
+            {Math.round(progress)}% complete
+          </p>
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        {segments.map((segment, index) => (
-          <Card key={index} className="border-2 transition-all hover:shadow-soft">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 mt-1">
-                  {getStatusIcon(segment.status)}
-                </div>
-                
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-semibold text-muted-foreground">
-                          Clip {index + 1}
-                        </span>
-                        {getStatusBadge(segment.status)}
-                      </div>
-                      <p className="text-sm text-foreground leading-relaxed">
+      <div className="space-y-4">
+        {segments.map((segment, index) => {
+          const clip = clips[index];
+          const isFailed = segment.status.__kind__ === 'failed';
+          const isCompleted = segment.status.__kind__ === 'completed';
+
+          return (
+            <Card 
+              key={index}
+              className={`border-2 transition-all ${
+                isFailed ? 'border-destructive/50' : 
+                isCompleted ? 'border-primary/50' : 
+                'border-border'
+              }`}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {getStatusIcon(segment.status)}
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base mb-1">
+                        Clip {index + 1}
+                      </CardTitle>
+                      <CardDescription className="text-sm break-words">
                         {segment.prompt}
-                      </p>
+                      </CardDescription>
                     </div>
                   </div>
-
-                  {segment.status.__kind__ === 'failed' && (
-                    <Alert variant="destructive" className="mt-2">
-                      <AlertDescription className="flex items-center justify-between">
-                        <span className="text-sm">
-                          {segment.status.failed}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onRetry(index)}
-                          className="ml-2"
-                        >
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Retry
-                        </Button>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {segment.status.__kind__ === 'completed' && clips[index]?.url && (
-                    <div className="mt-2 rounded-lg overflow-hidden border border-border bg-black">
-                      <video
-                        src={clips[index].url}
-                        controls
-                        playsInline
-                        className="w-full max-h-48 object-contain"
-                        preload="metadata"
-                      />
-                    </div>
-                  )}
+                  {getStatusBadge(segment.status)}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+
+              {isFailed && (
+                <CardContent className="space-y-3">
+                  <Alert variant="destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    <AlertDescription className="text-sm">
+                      {segment.status.__kind__ === 'failed' && typeof segment.status.failed === 'string'
+                        ? segment.status.failed 
+                        : 'Failed to generate clip'}
+                    </AlertDescription>
+                  </Alert>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onRetry(index)}
+                    className="w-full"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry Clip
+                  </Button>
+                </CardContent>
+              )}
+
+              {isCompleted && clip && (
+                <CardContent>
+                  <ClipVideoPreview
+                    url={clip.url}
+                    onRetry={() => onRetry(index)}
+                  />
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

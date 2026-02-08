@@ -1,6 +1,6 @@
 // Client-side runtime Grok configuration management
 
-import { validateAndNormalizeEndpoint } from './grokEndpoint';
+import { validateAndNormalizeEndpoint, CANONICAL_GROK_ENDPOINT, isCanonicalEndpoint } from './grokEndpoint';
 
 const GROK_ENDPOINT_KEY = 'grok-api-endpoint';
 const GROK_API_KEY_KEY = 'grok-api-key';
@@ -60,6 +60,7 @@ export function saveRuntimeConfig(endpoint: string, apiKey: string): SaveConfigR
   }
   
   try {
+    // Save the normalized endpoint (without trailing slash)
     localStorage.setItem(GROK_ENDPOINT_KEY, validation.normalized!);
     localStorage.setItem(GROK_API_KEY_KEY, trimmedApiKey);
     
@@ -105,12 +106,36 @@ export function isRuntimeConfigValid(config: RuntimeGrokConfig | null): boolean 
 }
 
 /**
- * Subscribe to runtime config changes
+ * Check if the saved endpoint is a legacy/incorrect endpoint
  */
-export function subscribeToConfigChanges(callback: () => void): () => void {
+export function hasLegacyEndpoint(): boolean {
+  const config = loadRuntimeConfig();
+  if (!config) return false;
+  
+  return !isCanonicalEndpoint(config.endpoint);
+}
+
+/**
+ * Get a message describing the legacy endpoint issue
+ */
+export function getLegacyEndpointMessage(): string | null {
+  const config = loadRuntimeConfig();
+  if (!config) return null;
+  
+  if (!isCanonicalEndpoint(config.endpoint)) {
+    return `Your saved Grok endpoint (${config.endpoint}) should be updated to ${CANONICAL_GROK_ENDPOINT} for proper functionality.`;
+  }
+  
+  return null;
+}
+
+/**
+ * Listen for config changes
+ */
+export function onConfigChange(callback: () => void): () => void {
   const handler = () => callback();
   window.addEventListener(CONFIG_CHANGE_EVENT, handler);
   
-  // Return unsubscribe function
+  // Return cleanup function
   return () => window.removeEventListener(CONFIG_CHANGE_EVENT, handler);
 }

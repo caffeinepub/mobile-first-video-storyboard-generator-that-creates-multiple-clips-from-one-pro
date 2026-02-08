@@ -1,55 +1,38 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-08T07:11:03.792Z",
-  "summary": "Diff adds Grok endpoint validation/normalization utilities, strengthens runtime Grok config save/load behavior, adds preflight provider configuration checks before starting generation (preventing step advancement on failure), and improves user-visible error states for early generation failures and reference-image encoding/upload errors. Some unrelated enhancements (e.g., demo provider changes, composition/download utilities) appear to be included beyond the BuildRequest scope.",
-  "missing_requirements": [
-    {
-      "id": "REQ-33",
-      "requirement": "Remove or prevent browser-native constraint validation messages (e.g., \"The string did not match the expected pattern\") from appearing during the video creation flow, replacing them with in-app validation + English error messaging; the runtime Grok endpoint input must not hard-fail due to overly strict HTML input validation.",
-      "reason": "The diff shows new JS/TS validation (validateAndNormalizeEndpoint) and toast/inline error plumbing, but the provided excerpts do not show the actual HTML input attributes being changed (e.g., removing pattern/type=url/required or disabling native validation). Without seeing the Input component props or a form-level noValidate, it’s not possible to confirm that browser-native constraint validation tooltips/toasts cannot appear.",
-      "evidence": [
-        "frontend/src/components/PromptComposer.tsx (truncated)",
-        "frontend/src/lib/grokEndpoint.ts"
-      ]
-    }
-  ],
+  "generatedAt": "2026-02-08T22:12:55.722Z",
+  "summary": "BuildRequest lists no explicit requirements beyond the title goal. The diff does set a hardcoded Grok API key in the frontend and initializes runtime config on app load, but it also includes additional unrelated changes (notably substantial backend session-management logic) that were not requested.",
+  "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Demo mode changed to generate real recorded WebM videos using MediaRecorder/canvas animation, plus explicit demo opt-in tracking.",
-      "reason": "Not requested; BuildRequest is specifically about fixing browser validation errors and improving related validation/error handling, and explicitly lists adding new video-generation features as a non-goal.",
+      "description": "Implemented/modified backend video session and segment management APIs (createSession/getSession/getUserSessions/updateSegmentStatus, session data structures, etc.), which is unrelated to only setting a Grok API key.",
+      "reason": "BuildRequest only asks to set the Grok (xAI) API key to a provided value and explicitly states no additional requirements; backend session-management work is not requested.",
       "evidence": [
-        "frontend-file-summaries.txt (\"frontend/src/providers/videoProvider.ts\": \"Demo mode now generating real recorded WebM videos...\")"
+        "backend/main.mo"
       ]
     },
     {
-      "description": "Client-side composition/download experience enhancements (stage-based composition progress, new download utility, individual clip download options, CORS/network failure handling).",
-      "reason": "Not requested; BuildRequest focuses on validation/error handling for video creation and preventing incorrect step advancement, not expanding composition/download features.",
+      "description": "Added frontend behavior to initialize Grok runtime configuration on app load and added preflight checks that block generation for legacy endpoints / missing configuration.",
+      "reason": "Beyond simply setting the API key value; these are additional behavioral changes not requested in the BuildRequest.",
       "evidence": [
-        "frontend-file-summaries.txt (\"frontend/src/components/ComposedVideoPreview.tsx\": \"stage-based composition progress... new download utility... individual clip download options...\")",
-        "frontend-file-summaries.txt (\"frontend/src/lib/videoCompose.ts\": \"stage-based progress reporting... clear messaging about multi-clip composition limitations...\")"
+        "frontend/src/App.tsx"
       ]
     },
     {
-      "description": "Auto-switching provider behavior when Grok becomes configured (and related provider-layer changes).",
-      "reason": "Not requested; BuildRequest/REQ-35 explicitly notes the error experience should not silently switch providers. While the auto-switch may not be strictly tied to an error path, it is additional behavior outside the requested validation-fix scope.",
+      "description": "Updated project metadata/state tracking files (project_state.json and frontend-file-summaries.txt) with broader feature descriptions unrelated to the requested key change.",
+      "reason": "Not requested by the BuildRequest; these changes reflect broader product features rather than the single key-setting task.",
       "evidence": [
-        "frontend/src/components/PromptComposer.tsx (\"Provider will auto-switch to Grok via the config change subscription\")",
-        "frontend-file-summaries.txt (\"frontend/src/providers/videoProvider.ts\": \"...auto-switching to Grok when configured\")"
+        "project_state.json",
+        "frontend-file-summaries.txt"
       ]
     }
   ],
-  "confidence": 0.64,
+  "confidence": 0.74,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
-    "frontend/src/components/ClipSegmentsList.tsx",
-    "frontend/src/components/PromptComposer.tsx",
-    "frontend/src/hooks/useVideoSession.ts",
-    "frontend/src/lib/fileEncoding.ts",
-    "frontend/src/lib/grokEndpoint.ts",
-    "frontend/src/lib/grokRuntimeConfig.ts",
-    "frontend/src/providers/grokProvider.ts",
     "project_state.json"
   ]
 }

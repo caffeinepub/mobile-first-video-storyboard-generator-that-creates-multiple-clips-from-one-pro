@@ -1,75 +1,28 @@
 {
   "kind": "build_request",
-  "title": "Fix browser validation error ('The string did not match the expected pattern') during video creation",
-  "priority": "high",
-  "requirements": [
-    {
-      "id": "REQ-33",
-      "text": "Remove or prevent browser-native constraint validation messages (e.g., \"The string did not match the expected pattern\") from appearing during the video creation flow, and replace them with in-app validation + English error messaging.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Fix this error when making the video",
-          "The string did not match the expected pattern."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Attempting to generate a video must not trigger any browser-native validation tooltip/toast that says \"The string did not match the expected pattern.\"",
-        "If the Grok API endpoint is invalid, show an in-app error (toast and/or inline message) in English explaining what is wrong and how to fix it (e.g., must start with http:// or https://).",
-        "The runtime Grok endpoint input must accept common valid endpoints (including those with paths) and must not hard-fail due to overly strict HTML input validation."
-      ]
-    },
-    {
-      "id": "REQ-34",
-      "text": "Harden runtime Grok configuration input handling so invalid/partial values cannot break generation: validate and normalize the endpoint before saving, and surface actionable errors without advancing the user to later steps.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Fix this error when making the video"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Saving runtime Grok settings with an invalid endpoint does not save to localStorage and shows an English error explaining the expected format.",
-        "When a runtime endpoint is saved, it is normalized to a consistent format (e.g., trims whitespace and removes trailing slashes) so fetch calls do not produce malformed URLs.",
-        "If generation is initiated while Grok is selected but configuration is missing/invalid, the app remains on the Prompt step and shows an English error describing how to configure Grok (runtime settings or env vars)."
-      ]
-    },
-    {
-      "id": "REQ-35",
-      "text": "Ensure the app provides a clear, user-visible error state when generation cannot start or fails immediately (e.g., segment derivation fails), including when reference images are uploaded (e.g., IMG_0787.jpeg).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Fix this error when making the video",
-          "The user has uploaded 1 image(s): IMG_0787.jpeg."
-        ]
-      },
-      "acceptanceCriteria": [
-        "If segment derivation fails before any segments are created, the user sees a clear English error and a clear path to recover (e.g., edit settings and try again) without being left on an empty/blocked Clips step.",
-        "Errors related to reference image encoding/upload (if any) are surfaced in English and identify that reference images were included in the request.",
-        "The error experience does not silently switch providers or otherwise change the user’s provider selection."
-      ]
-    }
-  ],
+  "title": "Set Grok (xAI) API key to the provided value",
+  "priority": "normal",
+  "requirements": [],
   "constraints": [
-    "Frontend files listed in SYSTEM_CONTEXT.frontend.immutablePaths must not be modified.",
-    "Keep the backend as a single Motoko actor; do not introduce additional backend services."
+    "Frontend must not edit files in frontend/immutablePaths (compose existing UI components instead).",
+    "Backend must remain a single Motoko actor in backend/main.mo; only add backend/migration.mo if an upgrade requires state migration."
   ],
   "nonGoals": [
-    "Adding new video-generation features beyond fixing the reported error and improving related validation/error handling.",
-    "Changing the overall multi-step flow (Prompt → Clips → Compose → Download) beyond preventing incorrect step advancement on failure."
+    "Do not add or change any non-Grok providers or reintroduce Demo mode.",
+    "Do not implement new backend storage for API keys or secrets."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

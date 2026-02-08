@@ -6,6 +6,9 @@ export interface EndpointValidationResult {
   error?: string;
 }
 
+// Canonical Grok API endpoint
+export const CANONICAL_GROK_ENDPOINT = 'https://api.x.ai/v1';
+
 /**
  * Validate and normalize a Grok API endpoint
  * Returns normalized endpoint or error message
@@ -47,6 +50,11 @@ export function validateAndNormalizeEndpoint(endpoint: string): EndpointValidati
       normalized = normalized.slice(0, -1);
     }
     
+    // Special handling for xAI endpoints - normalize to canonical
+    if (url.hostname === 'api.x.ai' && url.pathname.startsWith('/v1')) {
+      normalized = CANONICAL_GROK_ENDPOINT;
+    }
+    
     // Add back search params if any
     if (url.search) {
       normalized += url.search;
@@ -59,7 +67,7 @@ export function validateAndNormalizeEndpoint(endpoint: string): EndpointValidati
   } catch (error) {
     return {
       valid: false,
-      error: 'Invalid endpoint URL format. Please enter a valid URL (e.g., https://api.example.com/v1/generate)'
+      error: `Invalid endpoint URL format. Please enter a valid URL (e.g., ${CANONICAL_GROK_ENDPOINT})`
     };
   }
 }
@@ -70,4 +78,12 @@ export function validateAndNormalizeEndpoint(endpoint: string): EndpointValidati
 export function isEndpointFormatValid(endpoint: string): boolean {
   const trimmed = endpoint.trim();
   return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+}
+
+/**
+ * Check if an endpoint is the canonical Grok endpoint
+ */
+export function isCanonicalEndpoint(endpoint: string): boolean {
+  const validation = validateAndNormalizeEndpoint(endpoint);
+  return validation.valid && validation.normalized === CANONICAL_GROK_ENDPOINT;
 }
