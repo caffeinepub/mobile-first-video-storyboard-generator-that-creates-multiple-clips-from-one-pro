@@ -9,7 +9,7 @@ export function useVideoSession() {
   const { actor } = useActor();
   const [sessionId, setSessionId] = useState<bigint | null>(null);
   const [segments, setSegments] = useState<PublicSegment[]>([]);
-  const [clips, setClips] = useState<ClipData[]>([]);
+  const [clips, setClips] = useState<(ClipData | null)[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageFile[]>([]);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -57,7 +57,9 @@ export function useVideoSession() {
         status: { __kind__: 'queued' as const, queued: null }
       }));
       setSegments(initialSegments);
-      setClips([]);
+      
+      // Initialize clips array with nulls (no placeholder clips)
+      setClips(new Array(segmentPrompts.length).fill(null));
 
       // Generate clips incrementally
       for (let i = 0; i < segmentPrompts.length; i++) {
@@ -89,24 +91,30 @@ export function useVideoSession() {
           setSegments(prev => prev.map((seg, idx) =>
             idx === i ? { ...seg, status: { __kind__: 'completed' as const, completed: null } } : seg
           ));
-          setClips(prev => [...prev, clip]);
+          
+          // Add the completed clip at the correct index
+          setClips(prev => prev.map((c, idx) => idx === i ? clip : c));
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to generate clip';
+          
+          // Add reference image context if applicable
+          const hasReferenceImages = referenceImages.length > 0;
+          const contextualError = hasReferenceImages
+            ? `${errorMessage} (${referenceImages.length} reference ${referenceImages.length === 1 ? 'image was' : 'images were'} included)`
+            : errorMessage;
           
           // Update status to failed
           await actor.updateSegmentStatus(
             newSessionId,
             BigInt(i),
-            { __kind__: 'failed', failed: errorMessage }
+            { __kind__: 'failed', failed: contextualError }
           );
           setSegments(prev => prev.map((seg, idx) =>
-            idx === i ? { ...seg, status: { __kind__: 'failed' as const, failed: errorMessage } } : seg
+            idx === i ? { ...seg, status: { __kind__: 'failed' as const, failed: contextualError } } : seg
           ));
-          setClips(prev => [...prev, {
-            url: '',
-            duration: perClipDuration,
-            prompt: segmentPrompts[i]
-          }]);
+          
+          // Keep clip as null for failed generation (no placeholder)
+          // This prevents rendering empty video elements
         }
       }
     } catch (error) {
@@ -142,7 +150,8 @@ export function useVideoSession() {
       ));
 
       // Get duration from first clip or default
-      const duration = clips[0]?.duration || 10;
+      const firstValidClip = clips.find(c => c !== null);
+      const duration = firstValidClip?.duration || 10;
 
       // Generate clip
       const clip = await generateClip(
@@ -161,18 +170,26 @@ export function useVideoSession() {
       setSegments(prev => prev.map((seg, idx) =>
         idx === index ? { ...seg, status: { __kind__: 'completed' as const, completed: null } } : seg
       ));
+      
+      // Update the clip at the correct index
       setClips(prev => prev.map((c, idx) => idx === index ? clip : c));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate clip';
+      
+      // Add reference image context if applicable
+      const hasReferenceImages = referenceImages.length > 0;
+      const contextualError = hasReferenceImages
+        ? `${errorMessage} (${referenceImages.length} reference ${referenceImages.length === 1 ? 'image was' : 'images were'} included)`
+        : errorMessage;
       
       // Update status to failed
       await actor.updateSegmentStatus(
         sessionId,
         BigInt(index),
-        { __kind__: 'failed', failed: errorMessage }
+        { __kind__: 'failed', failed: contextualError }
       );
       setSegments(prev => prev.map((seg, idx) =>
-        idx === index ? { ...seg, status: { __kind__: 'failed' as const, failed: errorMessage } } : seg
+        idx === index ? { ...seg, status: { __kind__: 'failed' as const, failed: contextualError } } : seg
       ));
     }
   }, [actor, sessionId, segments, clips, referenceImages]);

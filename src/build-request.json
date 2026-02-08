@@ -1,73 +1,73 @@
 {
   "kind": "build_request",
-  "title": "Fix generation/preview failures and add an in-progress Grok website view during video generation",
-  "priority": "normal",
+  "title": "Fix prompt-based video generation failures (including reference image runs) and correct Clips progress/UI states",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-44",
-      "text": "Eliminate the user-visible “load failed” experience for clip and composed video previews by ensuring the app never relies on the browser’s native <video> error UI; instead, render a stable in-app error state with clear English messaging and a retry action wherever a video URL cannot be loaded.",
+      "id": "REQ-47",
+      "text": "Fix the Grok clip-generation request so generating a video from a prompt works reliably (including when the user uploads reference images such as IMG_0793.png), and ensure failures are surfaced as clear in-app errors (English) instead of silently producing empty/invalid clip URLs.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "recent-messages-user-1"
         ],
         "quotes": [
-          "Fix when I'm trying to generate a video, fix it from saying load failed or generation failed, please."
+          "Fix when trying to generate a video with a prompt"
         ]
       },
       "acceptanceCriteria": [
-        "If a clip preview video fails to load, the UI shows an in-app error card (not the browser/native “load failed” message) with a Retry action.",
-        "If the composed/final preview video fails to load, the UI shows an in-app error state with clear next steps (e.g., retry compose, download individual clips).",
-        "The UI never attempts to render a <video> element for an empty/invalid URL (e.g., empty string), preventing spurious load errors.",
-        "Retry actions re-attempt loading/generation without requiring a full page reload."
+        "Generating with Grok configured succeeds for at least one clip when using a text prompt with 1 uploaded reference image (e.g., IMG_0793.png), producing a non-empty, playable video URL.",
+        "If the Grok API request fails (non-2xx) or returns an unexpected response shape, the clip is marked Failed and the user sees a concise English error message in the clip card (not a blank clip).",
+        "The app does not append placeholder ClipData with url: '' on failure; failed clips do not create a preview attempt using an empty URL.",
+        "When a request includes reference images and fails, the surfaced error message explicitly indicates that reference images were included and suggests trying again without them (while keeping the underlying technical details available for debugging/logs where applicable)."
       ]
     },
     {
-      "id": "REQ-45",
-      "text": "Improve the “Generation Failed” experience so it is less disruptive and more actionable: keep user-facing copy concise, and provide a clear recovery path (Back to Prompt and Try Again) while preserving technical details behind an explicit disclosure.",
+      "id": "REQ-48",
+      "text": "Correct the Clips-step overall progress calculation and labeling so the UI never reports 100% complete while 0 clips are completed (e.g., when all clips failed). Progress and label must accurately reflect completed vs failed clips during and after generation.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "recent-messages-user-1"
         ],
         "quotes": [
-          "Fix when I'm trying to generate a video, fix it from saying load failed or generation failed, please."
+          "Fix when trying to generate a video with a prompt"
         ]
       },
       "acceptanceCriteria": [
-        "When generation cannot start (e.g., segment derivation or initial request fails), the app shows a concise English summary describing what failed and what the user can do next.",
-        "The screen includes a primary recovery action that returns the user to the Prompt step, and does not strand the user on a dead-end error screen.",
-        "Any raw technical error text (request IDs, long stack traces, etc.) is only visible inside an explicit “Show technical details” disclosure (not shown by default)."
+        "If all segments are failed and completedCount is 0, the overall progress displayed is not 100%, and the label indicates generation failed (English).",
+        "If some clips completed and some failed, the label clearly shows both counts (e.g., \"1 completed, 1 failed\") and progress represents completed clips only (not \"done\" clips).",
+        "While a clip is generating, overall progress continues to update smoothly and never reaches 100% until at least one clip is actually completed (as applicable for the run)."
       ]
     },
     {
-      "id": "REQ-46",
-      "text": "During clip generation, add a dedicated in-progress “Grok website” view so users can watch Grok while videos are being generated, by attempting to embed the Grok website in-app and providing a reliable fallback when embedding is blocked.",
+      "id": "REQ-49",
+      "text": "Eliminate any remaining user-visible native video 'Load failed' experience in the Clips step by ensuring the app renders only stable in-app preview states (playable video, or an in-app error with a Retry action) and never relies on the browser’s native <video> error UI for clip previews.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "recent-messages-user-1"
         ],
         "quotes": [
-          "And show the user the grok website making the video while it generates"
+          "Fix when trying to generate a video with a prompt"
         ]
       },
       "acceptanceCriteria": [
-        "While clips are generating, the Clips step displays a “Grok (live view)” section that attempts to show https://grok.com in an embedded view (e.g., iframe) with an explicit label that generation continues in the app.",
-        "If embedding https://grok.com is blocked by the browser/security headers, the app shows an in-app message in English explaining that Grok cannot be embedded and provides an “Open Grok in a new tab” button linking to https://grok.com.",
-        "The Grok live-view section is not shown outside of the generation phase (e.g., hidden once all clips are completed/failed)."
+        "When a generated clip URL cannot be loaded/played, the clip preview area shows the app’s custom error UI (English) with a Retry button, and the browser’s native 'load failed' overlay is not shown.",
+        "Retrying from the preview error state triggers the existing retry flow for that clip and updates status/progress accordingly.",
+        "The clip preview component does not render a <video> element at all for empty/whitespace URLs."
       ]
     }
   ],
   "constraints": [
-    "Do not edit files under frontend/src/components/ui (read-only).",
-    "Do not edit frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx (immutable paths).",
-    "Backend must remain single-actor (all Motoko logic in backend/main.mo); only add migration.mo if state upgrades are required."
+    "Frontend immutable paths must not be modified: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
+    "Backend must remain a single Motoko actor (no additional backend services).",
+    "Use English for all user-facing text."
   ],
   "nonGoals": [
-    "Do not add third-party real-time streaming, WebSockets, or server-sent events to mirror Grok’s internal progress.",
-    "Do not integrate with any Grok/xAI website private APIs beyond the existing Grok generation API usage already present in the app.",
-    "Do not add new authentication providers (Internet Identity only)."
+    "Adding new providers or reintroducing Demo mode.",
+    "Changing the overall multi-step flow (Prompt → Clips → Compose → Download) beyond the fixes described.",
+    "Backend schema/state migrations unless strictly required for these frontend fixes."
   ],
   "imageRequirements": {
     "required": [],

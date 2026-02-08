@@ -1,12 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Make video generation and previewing more reliable and user-friendly by replacing native video load errors with stable in-app error states, improving the “Generation Failed” flow, and showing an in-progress Grok live view during clip generation.
+**Goal:** Make prompt-based video clip generation (including runs with uploaded reference images) reliable, and fix Clips progress and preview UI so failures are clearly and accurately represented.
 
 **Planned changes:**
-- Replace browser-native `<video>` failure UI (“load failed”) for clip and composed video previews with in-app error states that include clear English messaging and retry actions.
-- Prevent preview components from rendering `<video>` when the video URL is empty/invalid to avoid spurious load errors.
-- Update the “Generation Failed” screen to be concise and actionable with a primary recovery action (Back to Prompt / Try Again), and hide technical error details behind an explicit disclosure.
-- Add a “Grok (live view)” section during clip generation that attempts to embed https://grok.com, with an in-app fallback message and “Open Grok in a new tab” button if embedding is blocked; hide this section outside the generation phase.
+- Fix Grok clip-generation request/response handling so prompt + 1 reference image runs can succeed, and failures are surfaced as clear in-app English errors (no silent empty/invalid clip URLs).
+- Prevent creation of placeholder/invalid ClipData (e.g., `url: ''`) on failure; mark clips as Failed with a usable error state instead of attempting previews with empty URLs.
+- Correct Clips-step overall progress calculation and labeling so it never shows 100% when 0 clips completed; show accurate completed vs failed counts and a “generation failed” label when applicable.
+- Update clip preview rendering to avoid the browser’s native video “Load failed” UI by only rendering a `<video>` when a non-empty URL exists; otherwise show an in-app error UI with a Retry action.
 
-**User-visible outcome:** Users no longer see disruptive native “load failed” video UI; instead they get clear in-app error states with retry/recovery paths, and they can view an in-progress Grok website panel (or open Grok in a new tab) while clips are generating.
+**User-visible outcome:** Users can generate clips from a prompt (including with a reference image) and, when something goes wrong, they see clear English failure states with accurate overall progress and an in-app Retry option—without blank clips or native video “Load failed” overlays.

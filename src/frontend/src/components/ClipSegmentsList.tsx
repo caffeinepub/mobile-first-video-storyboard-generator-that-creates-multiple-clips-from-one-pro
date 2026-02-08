@@ -14,7 +14,7 @@ import GrokLiveView from './GrokLiveView';
 
 interface ClipSegmentsListProps {
   segments: PublicSegment[];
-  clips: ClipData[];
+  clips: (ClipData | null)[];
   onRetry: (index: number) => void;
   generationError?: string | null;
   onBackToPrompt?: () => void;
@@ -68,87 +68,35 @@ export default function ClipSegmentsList({
   // Show error state if generation failed before segments were created
   if (generationError && segments.length === 0) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mb-4">
-            <AlertCircle className="w-8 h-8 text-destructive" />
-          </div>
-          <h2 className="text-3xl font-display font-bold tracking-tight">
-            Unable to Start Generation
-          </h2>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            We couldn't start generating your video. Please check your settings and try again.
-          </p>
-        </div>
-
-        <Card className="border-2 border-destructive/50">
+      <div className="space-y-6">
+        <Card className="border-destructive/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="w-5 h-5" />
-              What happened?
-            </CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-full bg-destructive/10">
+                <AlertCircle className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <CardTitle>Generation Failed</CardTitle>
+                <CardDescription>Unable to start video generation</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="destructive">
+              <AlertCircle className="w-4 h-4" />
               <AlertDescription className="text-sm">
-                The video generation service couldn't process your request. This is usually caused by configuration issues or network problems.
+                {generationError}
               </AlertDescription>
             </Alert>
-
-            <Collapsible open={showTechnicalDetails} onOpenChange={setShowTechnicalDetails}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Show technical details
-                  </span>
-                  {showTechnicalDetails ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3">
-                <div className="p-3 rounded-lg bg-muted border text-xs font-mono break-all whitespace-pre-wrap max-h-48 overflow-y-auto">
-                  {generationError}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-
-            <div className="flex flex-col gap-2 pt-2">
-              <p className="text-sm font-medium">
-                What you can do:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                <li>Verify your Grok endpoint is set to <code className="text-xs bg-muted px-1 py-0.5 rounded">https://api.x.ai/v1</code></li>
-                <li>Check that your API key is correct and active</li>
-                <li>Try a simpler prompt or different settings</li>
-                <li>If using reference images, try without them</li>
-              </ul>
-            </div>
-
-            <div className="flex flex-col gap-2 pt-2">
+            <div className="flex gap-3">
               {onBackToPrompt && (
-                <Button 
-                  onClick={onBackToPrompt}
-                  variant="default"
-                  className="w-full"
-                >
+                <Button variant="outline" onClick={onBackToPrompt} className="flex-1">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Prompt
                 </Button>
               )}
               {onTryAgain && (
-                <Button 
-                  onClick={onTryAgain}
-                  variant="outline"
-                  className="w-full"
-                >
+                <Button onClick={onTryAgain} className="flex-1">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Try Again
                 </Button>
@@ -161,58 +109,58 @@ export default function ClipSegmentsList({
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-          <Film className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-3xl font-display font-bold tracking-tight">
-          Generating Clips
-        </h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Your video clips are being created
-        </p>
-      </div>
-
-      {isGenerating && <GrokLiveView />}
-
-      <Card className="border-2">
+    <div className="space-y-6">
+      {/* Header */}
+      <Card>
         <CardHeader>
-          <CardTitle>Overall Progress</CardTitle>
-          <CardDescription>{label}</CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-full bg-primary/10">
+              <Film className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Generating Clips</CardTitle>
+              <CardDescription>Your video clips are being created</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <Progress value={progress} className="h-2" />
-          <p className="text-sm text-center text-muted-foreground">
-            {Math.round(progress)}% complete
-          </p>
+        <CardContent className="space-y-4">
+          {/* Overall Progress */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Overall Progress</span>
+              <span className="text-muted-foreground">{label}</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+            <div className="text-right text-sm text-muted-foreground">
+              {Math.round(progress)}% complete
+            </div>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Grok Live View - only show while generating */}
+      {isGenerating && <GrokLiveView />}
+
+      {/* Clip Segments */}
       <div className="space-y-4">
         {segments.map((segment, index) => {
           const clip = clips[index];
           const isFailed = segment.status.__kind__ === 'failed';
           const isCompleted = segment.status.__kind__ === 'completed';
+          const hasValidClip = clip && clip.url && clip.url.trim() !== '';
 
           return (
             <Card 
               key={index}
-              className={`border-2 transition-all ${
-                isFailed ? 'border-destructive/50' : 
-                isCompleted ? 'border-primary/50' : 
-                'border-border'
-              }`}
+              className={isFailed ? 'border-destructive/50' : ''}
             >
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     {getStatusIcon(segment.status)}
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base mb-1">
-                        Clip {index + 1}
-                      </CardTitle>
-                      <CardDescription className="text-sm break-words">
+                      <CardTitle className="text-base">Clip {index + 1}</CardTitle>
+                      <CardDescription className="break-words">
                         {segment.prompt}
                       </CardDescription>
                     </div>
@@ -221,16 +169,58 @@ export default function ClipSegmentsList({
                 </div>
               </CardHeader>
 
+              {/* Show error details for failed clips */}
               {isFailed && (
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   <Alert variant="destructive">
                     <AlertCircle className="w-4 h-4" />
                     <AlertDescription className="text-sm">
-                      {segment.status.__kind__ === 'failed' && typeof segment.status.failed === 'string'
-                        ? segment.status.failed 
-                        : 'Failed to generate clip'}
+                      {segment.status.__kind__ === 'failed' && segment.status.failed
+                        ? (() => {
+                            const errorMsg = segment.status.failed;
+                            // Extract user-friendly message (before technical details)
+                            const match = errorMsg.match(/^([^(]+?)(?:\s*\(|$)/);
+                            const userMessage = match ? match[1].trim() : errorMsg;
+                            
+                            // Check if reference images were mentioned
+                            const hasReferenceImageNote = errorMsg.includes('reference image');
+                            
+                            return (
+                              <div className="space-y-2">
+                                <p>{userMessage}</p>
+                                {hasReferenceImageNote && (
+                                  <p className="text-xs">
+                                    Try generating without reference images if the issue persists.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()
+                        : 'Generation failed'}
                     </AlertDescription>
                   </Alert>
+
+                  {/* Technical details collapsible */}
+                  {segment.status.__kind__ === 'failed' && segment.status.failed && (
+                    <Collapsible open={showTechnicalDetails} onOpenChange={setShowTechnicalDetails}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between">
+                          <span className="text-xs text-muted-foreground">Technical Details</span>
+                          {showTechnicalDetails ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 p-3 rounded-md bg-muted text-xs font-mono break-all">
+                          {segment.status.failed}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -243,11 +233,13 @@ export default function ClipSegmentsList({
                 </CardContent>
               )}
 
-              {isCompleted && clip && (
+              {/* Show preview for completed clips with valid URLs */}
+              {isCompleted && hasValidClip && (
                 <CardContent>
                   <ClipVideoPreview
                     url={clip.url}
                     onRetry={() => onRetry(index)}
+                    className="w-full"
                   />
                 </CardContent>
               )}

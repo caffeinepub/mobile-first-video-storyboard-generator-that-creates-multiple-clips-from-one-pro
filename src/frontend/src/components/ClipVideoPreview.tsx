@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 
 interface ClipVideoPreviewProps {
   url: string;
@@ -9,31 +9,43 @@ interface ClipVideoPreviewProps {
   className?: string;
 }
 
-export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipVideoPreviewProps) {
-  const [hasError, setHasError] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
+type PreviewState = 'loading' | 'ready' | 'error';
 
-  // Reset error state when URL changes
+export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipVideoPreviewProps) {
+  const [previewState, setPreviewState] = useState<PreviewState>('loading');
+  const [isRetrying, setIsRetrying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Reset state when URL changes
   useEffect(() => {
-    setHasError(false);
+    setPreviewState('loading');
     setIsRetrying(false);
   }, [url]);
 
+  // Validate URL before attempting to render
+  const isValidUrl = url && url.trim() !== '' && 
+    (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:'));
+
+  const handleLoadedMetadata = () => {
+    setPreviewState('ready');
+  };
+
   const handleError = () => {
-    // Only set error if we're not already in error state (prevent spam)
-    if (!hasError) {
-      setHasError(true);
+    // Hide the video element immediately to prevent native error UI
+    if (videoRef.current) {
+      videoRef.current.style.display = 'none';
     }
+    setPreviewState('error');
   };
 
   const handleRetry = () => {
     setIsRetrying(true);
-    setHasError(false);
+    setPreviewState('loading');
     onRetry();
   };
 
   // Don't render video element for empty/invalid URLs
-  if (!url || url.trim() === '') {
+  if (!isValidUrl) {
     return (
       <div className={`rounded-lg overflow-hidden bg-muted border-2 border-muted-foreground/20 ${className}`}>
         <div className="p-6 space-y-4">
@@ -48,8 +60,8 @@ export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipV
     );
   }
 
-  // If there's an error, show error UI
-  if (hasError) {
+  // Show error UI (no video element)
+  if (previewState === 'error') {
     return (
       <div className={`rounded-lg overflow-hidden bg-muted border-2 border-destructive/50 ${className}`}>
         <div className="p-6 space-y-4">
@@ -74,10 +86,34 @@ export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipV
     );
   }
 
-  // Otherwise, show video player
+  // Show loading state
+  if (previewState === 'loading') {
+    return (
+      <div className={`rounded-lg overflow-hidden bg-black ${className}`}>
+        <div className="aspect-video flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading preview...</p>
+          </div>
+        </div>
+        {/* Hidden video element for loading */}
+        <video
+          ref={videoRef}
+          src={url}
+          className="hidden"
+          preload="metadata"
+          onLoadedMetadata={handleLoadedMetadata}
+          onError={handleError}
+        />
+      </div>
+    );
+  }
+
+  // Show video player (ready state)
   return (
     <div className={`rounded-lg overflow-hidden bg-black ${className}`}>
       <video
+        ref={videoRef}
         src={url}
         controls
         className="w-full"

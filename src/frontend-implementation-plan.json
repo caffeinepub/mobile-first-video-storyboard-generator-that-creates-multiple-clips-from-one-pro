@@ -1,74 +1,84 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Stabilize video preview error handling and add Grok live view during generation",
+  "title": "Fix Grok prompt-based clip generation reliability and correct Clips progress/preview states",
   "requirements": [
     {
-      "id": "REQ-44",
-      "summary": "Replace native <video> error UI with stable in-app error states and retries for clip and composed previews, and avoid rendering <video> for invalid URLs.",
+      "id": "REQ-47",
+      "summary": "Make Grok prompt-based clip generation reliable (including reference images) and surface clear in-app errors without creating empty/invalid clip URLs.",
       "acceptanceCriteria": [
-        "If a clip preview video fails to load, the UI shows an in-app error card (not the browser/native “load failed” message) with a Retry action.",
-        "If the composed/final preview video fails to load, the UI shows an in-app error state with clear next steps (e.g., retry compose, download individual clips).",
-        "The UI never attempts to render a <video> element for an empty/invalid URL (e.g., empty string), preventing spurious load errors.",
-        "Retry actions re-attempt loading/generation without requiring a full page reload."
+        "Generating with Grok configured succeeds for at least one clip when using a text prompt with 1 uploaded reference image (e.g., IMG_0793.png), producing a non-empty, playable video URL.",
+        "If the Grok API request fails (non-2xx) or returns an unexpected response shape, the clip is marked Failed and the user sees a concise English error message in the clip card (not a blank clip).",
+        "The app does not append placeholder ClipData with url: '' on failure; failed clips do not create a preview attempt using an empty URL.",
+        "When a request includes reference images and fails, the surfaced error message explicitly indicates that reference images were included and suggests trying again without them (while keeping the underlying technical details available for debugging/logs where applicable)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/providers/grokProvider.ts",
+          "operation": "modify",
+          "description": "Harden Grok response handling by extracting the video URL from multiple plausible response shapes, validating it is a non-empty string, and throwing actionable English errors when non-2xx or unexpected payloads occur; ensure errors mention when reference images were included and log technical details for debugging."
+        },
+        {
+          "path": "frontend/src/hooks/useVideoSession.ts",
+          "operation": "modify",
+          "description": "Stop appending placeholder clips with empty URLs on failures; maintain clip slots by index (e.g., nullable entries) and only mark a segment completed when the generated clip has a non-empty URL; on per-clip failure, set segment status to Failed with a concise English message that explicitly notes reference images were included (when applicable) and suggests retrying without them, while logging underlying error details."
+        },
+        {
+          "path": "frontend/src/components/ClipSegmentsList.tsx",
+          "operation": "modify",
+          "description": "Update clip rendering to handle missing/nullable clip entries without attempting preview, and ensure failed segments show a clear in-app error message and Retry action using shadcn-ui (Alert/Button/Card). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Adjust Clips-step gating logic to rely on segment completion plus existence of at least one valid, non-empty clip URL (not truthy empty strings), consistent with removing placeholder failed clip entries."
+        }
+      ]
+    },
+    {
+      "id": "REQ-48",
+      "summary": "Correct overall Clips progress calculation and labeling to reflect completed vs failed clips and avoid showing 100% when none completed.",
+      "acceptanceCriteria": [
+        "If all segments are failed and completedCount is 0, the overall progress displayed is not 100%, and the label indicates generation failed (English).",
+        "If some clips completed and some failed, the label clearly shows both counts (e.g., \"1 completed, 1 failed\") and progress represents completed clips only (not \"done\" clips).",
+        "While a clip is generating, overall progress continues to update smoothly and never reaches 100% until at least one clip is actually completed (as applicable for the run)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useLiveGenerationProgress.ts",
+          "operation": "modify",
+          "description": "Revise progress computation so progress is based on completed clips only (completedCount/total), never returns 100% when completedCount is 0, and labels explicitly report completed and failed counts; ensure generating-state smoothing never reaches 100% prematurely."
+        },
+        {
+          "path": "frontend/src/components/ClipSegmentsList.tsx",
+          "operation": "modify",
+          "description": "Ensure the overall progress label and percentage rendering properly reflect the updated hook outputs and clearly indicate the all-failed outcome in English using existing shadcn-ui components. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-49",
+      "summary": "Remove user-visible native browser video 'Load failed' UI by rendering only stable in-app preview states and providing retry from preview errors.",
+      "acceptanceCriteria": [
+        "When a generated clip URL cannot be loaded/played, the clip preview area shows the app’s custom error UI (English) with a Retry button, and the browser’s native 'load failed' overlay is not shown.",
+        "Retrying from the preview error state triggers the existing retry flow for that clip and updates status/progress accordingly.",
+        "The clip preview component does not render a <video> element at all for empty/whitespace URLs."
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/ClipVideoPreview.tsx",
           "operation": "modify",
-          "description": "Harden clip preview rendering: do not render a <video> element for empty/invalid URLs; prevent the browser’s native error UI by only showing the player once metadata loads and by swapping to an in-app error card on load failure; keep a Retry action that re-attempts loading without a page refresh. Use shadcn-ui primitives (Alert, Button) for consistent in-app error UI. Verify the component's usage instructions before implementing."
+          "description": "Implement a guarded preview state machine (loading/ready/error) that pre-validates non-empty URLs before rendering a visible <video>, shows a custom in-app loading and error UI, and unmounts/hides the <video> immediately on playback/load errors to avoid native 'Load failed' overlays; keep Retry wired to the provided onRetry callback using shadcn-ui (Alert/Button). Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/components/ComposedVideoPreview.tsx",
+          "path": "frontend/src/lib/videoValidation.ts",
           "operation": "modify",
-          "description": "Add composed preview load-failure handling that never relies on the native <video> error UI: gate <video> rendering on a non-empty URL; show a stable in-app error state when the composed preview cannot load with clear next steps (e.g., retry composition and/or download individual clips); ensure individual clip thumbnails/previews also avoid rendering <video> for empty URLs and fall back to in-app messaging. Use shadcn-ui Card/Alert/Button for the error state. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-45",
-      "summary": "Make the “Generation Failed” UI concise, actionable, and non-disruptive with Back to Prompt / Try Again and hidden technical details.",
-      "acceptanceCriteria": [
-        "When generation cannot start (e.g., segment derivation or initial request fails), the app shows a concise English summary describing what failed and what the user can do next.",
-        "The screen includes a primary recovery action that returns the user to the Prompt step, and does not strand the user on a dead-end error screen.",
-        "Any raw technical error text (request IDs, long stack traces, etc.) is only visible inside an explicit “Show technical details” disclosure (not shown by default)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Wire recovery actions into the generation-failed experience: pass a Try Again handler to the Clips step that re-invokes generation using the current prompt/settings (without full page reload), and ensure a Back to Prompt action remains available. (No changes to immutable frontend/src/main.tsx.)"
+          "description": "Add/adjust a frontend-safe validation helper used by ClipVideoPreview to quickly reject empty/whitespace URLs and provide clearer validation error messages for UI display without relying on visible <video> rendering."
         },
         {
           "path": "frontend/src/components/ClipSegmentsList.tsx",
           "operation": "modify",
-          "description": "Revise the generation start-failure UI (when generationError exists and no segments): keep copy concise and action-oriented; provide a primary “Back to Prompt” action and a secondary “Try Again” action; keep raw technical details behind an explicit disclosure (Collapsible) and hidden by default. Use shadcn-ui components (Card, Alert, Button, Collapsible) to match the existing design system. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-46",
-      "summary": "Show an in-progress “Grok (live view)” section during clip generation with an embed attempt and a reliable fallback when embedding is blocked.",
-      "acceptanceCriteria": [
-        "While clips are generating, the Clips step displays a “Grok (live view)” section that attempts to show https://grok.com in an embedded view (e.g., iframe) with an explicit label that generation continues in the app.",
-        "If embedding https://grok.com is blocked by the browser/security headers, the app shows an in-app message in English explaining that Grok cannot be embedded and provides an “Open Grok in a new tab” button linking to https://grok.com.",
-        "The Grok live-view section is not shown outside of the generation phase (e.g., hidden once all clips are completed/failed)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/GrokLiveView.tsx",
-          "operation": "create",
-          "description": "Create a dedicated Grok live-view component that attempts to embed https://grok.com in an iframe during generation, shows an explicit label that generation continues in-app, and falls back to an in-app blocked-embed message with an “Open Grok in a new tab” button when the iframe cannot be shown (e.g., times out / does not load). Use shadcn-ui Card/Alert/Button for layout and messaging. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/ClipSegmentsList.tsx",
-          "operation": "modify",
-          "description": "Render the “Grok (live view)” section only during the generation phase (e.g., while any segment is queued/generating and/or while isGenerating is true), and hide it once all clips are completed/failed. Wire the new GrokLiveView component into the Clips step UI in a non-disruptive placement (e.g., above the segments list). Use shadcn-ui primitives for consistent styling. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Pass generation-phase state into the Clips step so GrokLiveView is shown only while clips are actively generating (and not after completion/failure). Ensure this wiring does not introduce any new routes/pages and remains within the existing step flow."
+          "description": "Ensure the preview area is only rendered for completed segments with a valid non-empty URL, otherwise show the app’s custom error UI with Retry (and no <video> element) using shadcn-ui components. Verify the component's usage instructions before implementing."
         }
       ]
     }

@@ -9,16 +9,29 @@ export interface ValidationResult {
 }
 
 /**
+ * Quick validation for empty or whitespace URLs
+ * @param url - The URL to validate
+ * @returns Validation result
+ */
+export function isValidVideoUrl(url: string): boolean {
+  if (!url || url.trim() === '') {
+    return false;
+  }
+  
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:');
+}
+
+/**
  * Validate that a URL is likely a playable video
  * @param url - The URL to validate
  * @returns Promise with validation result
  */
 export async function validateVideoUrl(url: string): Promise<ValidationResult> {
-  // Check URL scheme
-  if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('blob:')) {
+  // Quick validation first
+  if (!isValidVideoUrl(url)) {
     return {
       isValid: false,
-      error: 'Invalid URL scheme. Expected http://, https://, or blob:'
+      error: 'Invalid or empty URL. Expected http://, https://, or blob: URL'
     };
   }
 
@@ -102,8 +115,8 @@ export function validateClipData(clip: any): ValidationResult {
     return { isValid: false, error: 'Clip data is missing' };
   }
 
-  if (!clip.url || typeof clip.url !== 'string') {
-    return { isValid: false, error: 'Clip URL is missing or invalid' };
+  if (!clip.url || typeof clip.url !== 'string' || clip.url.trim() === '') {
+    return { isValid: false, error: 'Clip URL is missing, invalid, or empty' };
   }
 
   if (clip.duration === undefined || typeof clip.duration !== 'number' || clip.duration <= 0) {

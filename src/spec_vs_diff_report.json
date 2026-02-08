@@ -1,33 +1,38 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-08T22:21:28.973Z",
-  "summary": "REQ-44/45/46 appear to be implemented: clip and composed video previews now have in-app error states and avoid rendering <video> for empty URLs; the generation-failed screen is redesigned with concise copy and a technical-details disclosure; and a new Grok (live view) iframe section with fallback is added during generation. However, the diff also introduces unrequested changes such as hardcoding a Grok API key and enforcing “Grok-only mode”/removing demo mode.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-08T22:34:54.921Z",
+  "summary": "Diff implements new clip preview error states, a live generation progress hook that avoids 100% when all clips fail, and hardens Grok provider request/response handling including reference image encoding and clearer errors. However, at least one REQ-47 acceptance criterion about reference-image-specific user messaging is not fully evidenced, and the diff introduces an unrequested hardcoded Grok API key in the frontend.",
+  "missing_requirements": [
     {
-      "description": "Hardcoded Grok API key added to the frontend and used to initialize runtime config on app load.",
-      "reason": "BuildRequest does not request adding or hardcoding credentials; it focuses on preview error handling and UI/UX improvements plus a Grok live-view section.",
+      "id": "REQ-47",
+      "requirement": "When a request includes reference images and fails, the surfaced error message explicitly indicates that reference images were included and suggests trying again without them (while keeping underlying technical details available).",
+      "reason": "useVideoSession adds reference image context on failure (e.g., \"(1 reference image was included)\") but the diff snippet does not show the required explicit suggestion to try again without reference images for these per-clip failures. The Grok provider adds such a suggestion for non-2xx responses, but it’s not clearly propagated/ensured at the clip card level for all failure types (e.g., other thrown errors).",
       "evidence": [
-        "frontend/src/App.tsx"
-      ]
-    },
-    {
-      "description": "App/provider behavior changed to “Grok-only mode” (e.g., demo mode removed; generation blocked unless Grok is configured; legacy endpoint enforcement).",
-      "reason": "BuildRequest does not ask to remove demo mode or enforce Grok-only operation; it only asks for UX fixes around preview failures, generation-failed messaging, and an in-progress Grok website view.",
-      "evidence": [
-        "frontend-file-summaries.txt (mentions: App.tsx Grok-only mode; useVideoSession.ts enforces Grok-only; videoProvider.ts hardcoded Grok-only; PromptComposer legacy endpoint detection/fix)"
+        "frontend/src/hooks/useVideoSession.ts (truncated)",
+        "frontend/src/providers/grokProvider.ts (truncated)"
       ]
     }
   ],
-  "confidence": 0.68,
+  "hallucinated_features": [
+    {
+      "description": "Hardcoded Grok API key embedded in the frontend App component and runtime-initialized on load.",
+      "reason": "BuildRequest does not request introducing a hardcoded API key; this is also generally a security-sensitive change and not part of REQ-47/48/49.",
+      "evidence": [
+        "frontend/src/App.tsx (truncated): const GROK_API_KEY = 'xai-...' and saveRuntimeConfig(..., GROK_API_KEY)"
+      ]
+    }
+  ],
+  "confidence": 0.62,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
     "frontend/src/components/ClipSegmentsList.tsx",
     "frontend/src/components/ClipVideoPreview.tsx",
-    "frontend/src/components/ComposedVideoPreview.tsx",
-    "frontend/src/components/GrokLiveView.tsx",
+    "frontend/src/hooks/useLiveGenerationProgress.ts",
+    "frontend/src/hooks/useVideoSession.ts",
+    "frontend/src/lib/videoValidation.ts",
+    "frontend/src/providers/grokProvider.ts",
     "project_state.json"
   ]
 }

@@ -41,13 +41,20 @@ export function useLiveGenerationProgress(segments: PublicSegment[]): LiveProgre
     progress = 0;
     label = 'Preparing...';
   } else if (completedCount === segments.length) {
-    // All completed
+    // All completed successfully
     progress = 100;
     label = `All ${segments.length} ${segments.length === 1 ? 'clip' : 'clips'} completed`;
   } else if (completedCount + failedCount === segments.length) {
     // All done (some failed)
-    progress = 100;
-    label = `${completedCount} of ${segments.length} ${segments.length === 1 ? 'clip' : 'clips'} completed`;
+    if (completedCount === 0) {
+      // All failed - show 0% progress
+      progress = 0;
+      label = `Generation failed (0 of ${segments.length} ${segments.length === 1 ? 'clip' : 'clips'} completed)`;
+    } else {
+      // Some completed, some failed
+      progress = (completedCount / segments.length) * 100;
+      label = `${completedCount} completed, ${failedCount} failed`;
+    }
   } else if (isGenerating) {
     // Currently generating
     const currentClipNumber = generatingIndex + 1;

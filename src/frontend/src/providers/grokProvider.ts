@@ -2,7 +2,6 @@ import { encodeImages, type EncodedImage } from '../lib/fileEncoding';
 import { loadRuntimeConfig, isRuntimeConfigValid } from '../lib/grokRuntimeConfig';
 import { validateAndNormalizeEndpoint } from '../lib/grokEndpoint';
 import type { ClipData } from './videoProvider';
-import { validateVideoUrl, validateClipData } from '../lib/videoValidation';
 
 // Grok AI provider configuration from environment variables
 const ENV_GROK_API_ENDPOINT = import.meta.env.VITE_GROK_API_ENDPOINT || '';
@@ -66,10 +65,12 @@ async function generateGrokVideo(
     );
   }
   
+  const hasReferenceImages = referenceImages && referenceImages.length > 0;
+  
   try {
     // Encode reference images if provided
     let encodedImages: EncodedImage[] | undefined;
-    if (referenceImages && referenceImages.length > 0) {
+    if (hasReferenceImages) {
       try {
         encodedImages = await encodeImages(referenceImages);
       } catch (error) {
@@ -99,48 +100,65 @@ async function generateGrokVideo(
     
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
+      const referenceImageNote = hasReferenceImages 
+        ? ` Note: This request included ${referenceImages!.length} reference ${referenceImages!.length === 1 ? 'image' : 'images'}. Try generating without reference images if the issue persists.`
+        : '';
+      
       throw new Error(
-        `Grok API request failed (${response.status}): ${errorText}. ` +
-        (referenceImages && referenceImages.length > 0 
-          ? 'This request included reference images. Try removing them if the issue persists.' 
-          : '')
+        `Grok API request failed (${response.status} ${response.statusText}): ${errorText}.${referenceImageNote}`
       );
     }
     
     const data = await response.json();
     
-    // Validate response structure
-    if (!data || typeof data.url !== 'string') {
+    // Extract video URL from multiple possible response shapes
+    let videoUrl: string | null = null;
+    
+    // Try direct url property
+    if (data && typeof data.url === 'string' && data.url.trim() !== '') {
+      videoUrl = data.url.trim();
+    }
+    // Try nested data.url
+    else if (data && data.data && typeof data.data.url === 'string' && data.data.url.trim() !== '') {
+      videoUrl = data.data.url.trim();
+    }
+    // Try video_url property
+    else if (data && typeof data.video_url === 'string' && data.video_url.trim() !== '') {
+      videoUrl = data.video_url.trim();
+    }
+    // Try nested data.video_url
+    else if (data && data.data && typeof data.data.video_url === 'string' && data.data.video_url.trim() !== '') {
+      videoUrl = data.data.video_url.trim();
+    }
+    
+    // Validate we got a non-empty URL
+    if (!videoUrl) {
+      const referenceImageNote = hasReferenceImages 
+        ? ` Note: This request included ${referenceImages!.length} reference ${referenceImages!.length === 1 ? 'image' : 'images'}. Try generating without reference images.`
+        : '';
+      
+      console.error('Invalid Grok API response structure:', data);
       throw new Error(
-        'Invalid response from Grok API: missing video URL. ' +
-        (referenceImages && referenceImages.length > 0 
-          ? 'This request included reference images.' 
-          : '')
+        `Invalid response from Grok API: missing or empty video URL.${referenceImageNote}`
       );
     }
     
-    // Validate that the URL points to a video
-    const videoValidation = await validateVideoUrl(data.url);
-    if (!videoValidation.isValid) {
+    // Validate URL format
+    if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && !videoUrl.startsWith('blob:')) {
+      const referenceImageNote = hasReferenceImages 
+        ? ` Note: This request included ${referenceImages!.length} reference ${referenceImages!.length === 1 ? 'image' : 'images'}.`
+        : '';
+      
       throw new Error(
-        `Grok API returned an invalid video URL: ${videoValidation.error}. ` +
-        'The URL does not point to a playable video file.'
+        `Grok API returned an invalid video URL format: "${videoUrl}". Expected a valid HTTP(S) or blob URL.${referenceImageNote}`
       );
     }
     
     const clipData: ClipData = {
-      url: data.url,
+      url: videoUrl,
       prompt,
       duration
     };
-    
-    // Final validation of clip data structure
-    const clipValidation = validateClipData(clipData);
-    if (!clipValidation.isValid) {
-      throw new Error(
-        `Invalid clip data from Grok API: ${clipValidation.error}`
-      );
-    }
     
     return clipData;
   } catch (error) {
@@ -148,11 +166,13 @@ async function generateGrokVideo(
     if (error instanceof Error) {
       throw error;
     }
+    
+    const referenceImageNote = hasReferenceImages 
+      ? ` Note: This request included ${referenceImages!.length} reference ${referenceImages!.length === 1 ? 'image' : 'images'}.`
+      : '';
+    
     throw new Error(
-      `Unexpected error during Grok video generation: ${String(error)}` +
-      (referenceImages && referenceImages.length > 0 
-        ? '. This request included reference images.' 
-        : '')
+      `Unexpected error during Grok video generation: ${String(error)}${referenceImageNote}`
     );
   }
 }

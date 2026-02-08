@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-08T22:21:28.976Z",
+  "generatedAt": "2026-02-08T22:34:54.924Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,44 +11,48 @@
     "implemented": 3,
     "items": [
       {
-        "id": "REQ-44",
-        "summary": "Eliminate the user-visible “load failed” experience for clip and composed video previews by ensuring the app never relies on the browser’s native <video> error UI; instead, render a stable in-app error state with clear English messaging and a retry action wherever a video URL cannot be loaded.",
+        "id": "REQ-47",
+        "summary": "Fix the Grok clip-generation request so generating a video from a prompt works reliably (including when the user uploads reference images such as IMG_0793.png), and ensure failures are surfaced as clear in-app errors (English) instead of silently producing empty/invalid clip URLs.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/ClipVideoPreview.tsx",
-          "frontend/src/components/ComposedVideoPreview.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/ClipVideoPreview.tsx",
-          "frontend/src/components/ComposedVideoPreview.tsx"
-        ]
-      },
-      {
-        "id": "REQ-45",
-        "summary": "Improve the “Generation Failed” experience so it is less disruptive and more actionable: keep user-facing copy concise, and provide a clear recovery path (Back to Prompt and Try Again) while preserving technical details behind an explicit disclosure.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/components/ClipSegmentsList.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/components/ClipSegmentsList.tsx"
-        ]
-      },
-      {
-        "id": "REQ-46",
-        "summary": "During clip generation, add a dedicated in-progress “Grok website” view so users can watch Grok while videos are being generated, by attempting to embed the Grok website in-app and providing a reliable fallback when embedding is blocked.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/GrokLiveView.tsx",
+          "frontend/src/providers/grokProvider.ts",
+          "frontend/src/hooks/useVideoSession.ts",
           "frontend/src/components/ClipSegmentsList.tsx",
           "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/GrokLiveView.tsx",
+          "frontend/src/providers/grokProvider.ts",
+          "frontend/src/hooks/useVideoSession.ts",
           "frontend/src/components/ClipSegmentsList.tsx",
           "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-48",
+        "summary": "Correct the Clips-step overall progress calculation and labeling so the UI never reports 100% complete while 0 clips are completed (e.g., when all clips failed). Progress and label must accurately reflect completed vs failed clips during and after generation.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useLiveGenerationProgress.ts",
+          "frontend/src/components/ClipSegmentsList.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useLiveGenerationProgress.ts",
+          "frontend/src/components/ClipSegmentsList.tsx"
+        ]
+      },
+      {
+        "id": "REQ-49",
+        "summary": "Eliminate any remaining user-visible native video 'Load failed' experience in the Clips step by ensuring the app renders only stable in-app preview states (playable video, or an in-app error with a Retry action) and never relies on the browser’s native <video> error UI for clip previews.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/ClipVideoPreview.tsx",
+          "frontend/src/lib/videoValidation.ts",
+          "frontend/src/components/ClipSegmentsList.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/ClipVideoPreview.tsx",
+          "frontend/src/lib/videoValidation.ts",
+          "frontend/src/components/ClipSegmentsList.tsx"
         ]
       }
     ]
@@ -61,8 +65,10 @@
     "frontend/src/App.tsx",
     "frontend/src/components/ClipSegmentsList.tsx",
     "frontend/src/components/ClipVideoPreview.tsx",
-    "frontend/src/components/ComposedVideoPreview.tsx",
-    "frontend/src/components/GrokLiveView.tsx",
+    "frontend/src/hooks/useLiveGenerationProgress.ts",
+    "frontend/src/hooks/useVideoSession.ts",
+    "frontend/src/lib/videoValidation.ts",
+    "frontend/src/providers/grokProvider.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
