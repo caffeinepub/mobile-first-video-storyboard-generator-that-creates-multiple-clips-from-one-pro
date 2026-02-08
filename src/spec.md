@@ -1,13 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Automatically use Grok (normal mode) whenever Grok configuration is available, without getting stuck in Demo mode due to a previously persisted provider choice unless the user explicitly opted into Demo mode.
+**Goal:** Eliminate browser-native validation errors during video creation and replace them with clear in-app validation and error states, especially around runtime Grok endpoint configuration and early generation failures.
 
 **Planned changes:**
-- Update provider selection logic to prefer Grok on page load when Grok configuration is detected via env vars or saved runtime config.
-- If a persisted provider is "demo", auto-switch to Grok when Grok is configured unless an explicit Demo opt-in flag is present.
-- Persist and honor an explicit Demo opt-in so that user-chosen Demo mode is not overridden by auto-switching while Grok is configured.
-- When Grok configuration becomes available at runtime, immediately switch the active provider to Grok unless the user explicitly opted into Demo mode.
-- Ensure all user-facing provider/configuration messaging remains in English.
+- Remove/prevent browser-native constraint validation tooltips (e.g., “The string did not match the expected pattern”) in the video creation flow and replace them with in-app validation and English error messaging.
+- Validate, normalize, and gate saving of the runtime Grok endpoint (e.g., require http:// or https://, trim whitespace, remove trailing slashes) and prevent advancing when configuration is invalid/missing.
+- Add clear, user-visible error states when generation cannot start or fails immediately (including failures involving reference images like IMG_0787.jpeg), keeping the user on the appropriate step with recovery guidance and without switching providers.
 
-**User-visible outcome:** When Grok is configured, the app shows Grok as the active provider by default (including after reloads), and it only stays in Demo mode if the user explicitly chose Demo mode.
+**User-visible outcome:** Users can configure a Grok runtime endpoint without browser popups; invalid endpoints show clear English in-app errors and won’t be saved or allow generation to proceed, and early generation failures (including with reference images) show actionable errors without leaving the flow stuck or changing the selected provider.

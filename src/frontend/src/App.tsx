@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AppShell from './components/AppShell';
 import PromptComposer from './components/PromptComposer';
 import ClipSegmentsList from './components/ClipSegmentsList';
@@ -6,134 +7,162 @@ import ComposedVideoPreview from './components/ComposedVideoPreview';
 import MobileStepper from './components/MobileStepper';
 import BottomActionBar from './components/BottomActionBar';
 import { useVideoSession } from './hooks/useVideoSession';
-import { isWithinTolerance } from './lib/duration';
-import type { ReferenceImageFile } from './lib/referenceImages';
 import { useVideoProvider } from './hooks/useVideoProvider';
+import { isWithinTolerance, calculateTotalDuration } from './lib/duration';
 import { Toaster } from '@/components/ui/sonner';
-import type { ClipData } from './providers/videoProvider';
+import { toast } from 'sonner';
+
+const queryClient = new QueryClient();
 
 type Step = 'prompt' | 'clips' | 'compose' | 'download';
 
-function App() {
+function VideoApp() {
   const [currentStep, setCurrentStep] = useState<Step>('prompt');
   const [prompt, setPrompt] = useState('');
-  const [clipCount, setClipCount] = useState(3);
-  const [perClipDuration, setPerClipDuration] = useState(20);
-  const [referenceImages, setReferenceImages] = useState<ReferenceImageFile[]>([]);
-  const [clips, setClips] = useState<ClipData[]>([]);
+  const [clipCount, setClipCount] = useState(1);
+  const [perClipDuration, setPerClipDuration] = useState(10);
   const [composedVideoUrl, setComposedVideoUrl] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
 
-  const { provider, setProvider, isGrokConfigured, explicitDemoOptIn } = useVideoProvider();
+  const { 
+    provider, 
+    setProvider, 
+    isGrokConfigured,
+    explicitDemoOptIn 
+  } = useVideoProvider();
 
   const {
-    sessionId,
     segments,
+    clips,
     isGenerating,
     startGeneration,
     retrySegment,
-    reset
+    reset,
+    referenceImages,
+    setReferenceImages,
+    generationError
   } = useVideoSession();
 
-  const handleStartGeneration = async () => {
-    setCurrentStep('clips');
-    setClips([]);
-    setComposedVideoUrl(null);
+  const totalDuration = calculateTotalDuration(clipCount, perClipDuration);
+  const withinTolerance = isWithinTolerance(totalDuration, clipCount);
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a video prompt');
+      return;
+    }
+
+    if (!withinTolerance) {
+      toast.error('Please adjust your video settings to meet duration requirements');
+      return;
+    }
+
+    const result = await startGeneration(prompt, clipCount, perClipDuration);
     
-    // Extract File objects from ReferenceImageFile
-    const imageFiles = referenceImages.map(img => img.file);
-    const generatedClips = await startGeneration(prompt, clipCount, perClipDuration, imageFiles);
-    
-    if (generatedClips) {
-      setClips(generatedClips);
-      // Move to compose step when all clips are ready
-      setCurrentStep('compose');
-      setIsComposing(true);
+    if (result.success) {
+      setCurrentStep('clips');
+    } else {
+      // Stay on prompt step and show error
+      toast.error(result.error || 'Failed to start generation');
     }
   };
 
-  const handleRetry = async (segmentIndex: number) => {
-    const retriedClip = await retrySegment(segmentIndex);
-    if (retriedClip) {
-      setClips(prev => {
-        const updated = [...prev];
-        updated[segmentIndex] = retriedClip;
-        return updated;
-      });
+  const handleContinueToCompose = () => {
+    const successfulClips = clips.filter(clip => clip !== null);
+    
+    if (successfulClips.length === 0) {
+      toast.error('No clips completed successfully. Please retry failed clips or start over.');
+      return;
     }
+
+    setIsComposing(true);
+    setCurrentStep('compose');
   };
 
   const handleStartOver = () => {
     reset();
-    setCurrentStep('prompt');
     setPrompt('');
-    setReferenceImages([]);
-    setClips([]);
+    setClipCount(1);
+    setPerClipDuration(10);
     setComposedVideoUrl(null);
     setIsComposing(false);
+    setCurrentStep('prompt');
+  };
+
+  const handleBackToPrompt = () => {
+    reset();
+    setCurrentStep('prompt');
   };
 
   const handleComposed = (url: string) => {
     setComposedVideoUrl(url);
     setIsComposing(false);
-    setCurrentStep('download');
   };
 
-  const canProceed = () => {
-    if (currentStep === 'prompt') {
-      const totalDuration = clipCount * perClipDuration;
-      return prompt.trim().length > 0 && isWithinTolerance(totalDuration, clipCount);
+  const canProceed = (): boolean => {
+    switch (currentStep) {
+      case 'prompt':
+        return prompt.trim().length > 0 && withinTolerance;
+      case 'clips': {
+        const allDone = segments.every(
+          s => s.status.__kind__ === 'completed' || s.status.__kind__ === 'failed'
+        );
+        const hasSuccess = clips.some(clip => clip !== null);
+        return allDone && hasSuccess;
+      }
+      case 'compose':
+        return true;
+      default:
+        return false;
     }
-    return false;
   };
 
-  const allSegmentsComplete = segments.every(s => s.status.__kind__ === 'completed');
-  const hasFailedSegments = segments.some(s => s.status.__kind__ === 'failed');
+  const getActionLabel = (): string => {
+    switch (currentStep) {
+      case 'prompt':
+        return 'Generate Video';
+      case 'clips':
+        return 'Continue to Compose';
+      case 'compose':
+        return 'View Download';
+      default:
+        return 'Next';
+    }
+  };
 
-  // Determine action button based on current step
+  const handleAction = () => {
+    switch (currentStep) {
+      case 'prompt':
+        handleGenerate();
+        break;
+      case 'clips':
+        handleContinueToCompose();
+        break;
+      case 'compose':
+        setCurrentStep('download');
+        break;
+    }
+  };
+
   const getActionButton = () => {
-    if (currentStep === 'prompt') {
-      return {
-        label: 'Generate Video',
-        onClick: handleStartGeneration,
-        disabled: !canProceed(),
-        loading: false,
-        variant: 'default' as const
-      };
-    }
-    
-    if (currentStep === 'clips' && allSegmentsComplete && !hasFailedSegments) {
-      return {
-        label: 'Continue to Preview',
-        onClick: () => {
-          setCurrentStep('compose');
-          setIsComposing(true);
-        },
-        disabled: false,
-        loading: false,
-        variant: 'default' as const
-      };
-    }
-    
     if (currentStep === 'download') {
-      return {
-        label: 'Start Over',
-        onClick: handleStartOver,
-        disabled: false,
-        loading: false,
-        variant: 'outline' as const
-      };
+      return null;
     }
-    
-    return null;
+
+    return {
+      label: getActionLabel(),
+      onClick: handleAction,
+      disabled: !canProceed() || isGenerating,
+      loading: isGenerating && currentStep === 'prompt'
+    };
   };
 
   return (
     <AppShell>
-      <div className="min-h-screen flex flex-col pb-24">
-        <div className="flex-1 container max-w-4xl mx-auto px-4 py-8">
-          <MobileStepper currentStep={currentStep} />
+      <div className="max-w-2xl mx-auto px-4 py-8 pb-32">
+        <MobileStepper currentStep={currentStep} />
 
+        <div className="mt-8">
           {currentStep === 'prompt' && (
             <PromptComposer
               prompt={prompt}
@@ -155,25 +184,33 @@ function App() {
             <ClipSegmentsList
               segments={segments}
               clips={clips}
-              onRetry={handleRetry}
+              onRetry={retrySegment}
+              generationError={generationError}
+              onBackToPrompt={handleBackToPrompt}
             />
           )}
 
           {(currentStep === 'compose' || currentStep === 'download') && (
             <ComposedVideoPreview
-              clips={clips}
+              clips={clips.filter(clip => clip !== null)}
               composedVideoUrl={composedVideoUrl}
               onComposed={handleComposed}
               isComposing={isComposing}
             />
           )}
         </div>
-
-        <BottomActionBar action={getActionButton()} />
       </div>
-      <Toaster />
+
+      <BottomActionBar action={getActionButton()} />
     </AppShell>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <VideoApp />
+      <Toaster />
+    </QueryClientProvider>
+  );
+}

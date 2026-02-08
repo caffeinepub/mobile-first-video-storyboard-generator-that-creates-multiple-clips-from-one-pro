@@ -2,11 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-ensure-the-app-automatically-selects-and-stays-on-the-grok-provider-normal-mode-whenever-grok-configuration-is-detected-via-env-vars-or-saved-runtime-config-and-never-remains-in-demo-mode-due-to-a-previously-persisted-provider-selection-unless-the-user-has-explicitly-opted-into-demo-mode",
-      "featureTitle": "Ensure the app automatically selects and stays on the Grok provider (normal mode) whenever Grok configuration is detected (via env vars or saved runtime config), and never remains in Demo mode due to a previously persisted provider selection unless the user has explicitly opted into Demo mode.",
+      "featureId": "feature-remove-or-prevent-browser-native-constraint-validation-messages-e-g-the-string-did-not-match-the-expected-pattern-from-appearing-during-the-video-creation-flow-and-replace-them-with-in-app-validation-english-error-messaging",
+      "featureTitle": "Remove or prevent browser-native constraint validation messages (e.g., \"The string did not match the expected pattern\") from appearing during the video creation flow, and replace them with in-app validation + English error messaging.",
       "files": [
-        "frontend/src/hooks/useVideoProvider.ts",
-        "frontend/src/providers/videoProvider.ts"
+        "frontend/src/components/PromptComposer.tsx",
+        "frontend/src/lib/grokEndpoint.ts",
+        "frontend/src/lib/grokRuntimeConfig.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -16,7 +17,50 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-27"
+        "REQ-33"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-harden-runtime-grok-configuration-input-handling-so-invalid-partial-values-cannot-break-generation-validate-and-normalize-the-endpoint-before-saving-and-surface-actionable-errors-without-advancing-the-user-to-later-steps",
+      "featureTitle": "Harden runtime Grok configuration input handling so invalid/partial values cannot break generation: validate and normalize the endpoint before saving, and surface actionable errors without advancing the user to later steps.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/hooks/useVideoSession.ts",
+        "frontend/src/lib/grokRuntimeConfig.ts",
+        "frontend/src/providers/grokProvider.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-34"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-app-provides-a-clear-user-visible-error-state-when-generation-cannot-start-or-fails-immediately-e-g-segment-derivation-fails-including-when-reference-images-are-uploaded-e-g-img-0787-jpeg",
+      "featureTitle": "Ensure the app provides a clear, user-visible error state when generation cannot start or fails immediately (e.g., segment derivation fails), including when reference images are uploaded (e.g., IMG_0787.jpeg).",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/ClipSegmentsList.tsx",
+        "frontend/src/hooks/useVideoSession.ts",
+        "frontend/src/lib/fileEncoding.ts",
+        "frontend/src/providers/grokProvider.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-35"
       ],
       "confidence": "high"
     }

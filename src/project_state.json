@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 17,
+  "projectStateVersion": 21,
   "summary": "Build a Grok AI-powered website that generates one or multiple short video clips from a prompt (optionally with uploaded reference images), and composes them into a ~1-minute video, with an easy-to-use mobile-first UI.",
   "architectural_notes": [
     "Add an image-upload input pipeline (UI + validation + storage/transfer strategy) so uploaded reference images can be provided to the video generation provider.",
@@ -11,7 +11,11 @@
   ],
   "known_issues": [
     "App is currently running in Demo mode because Grok AI configuration is not set/being detected; needs proper Grok config to force real provider path.",
-    "Deployment/domain name validation error: domain 'Landens_grok_ai' rejected because it contains an underscore; domains must be 5–50 chars and only letters, numbers, hyphens."
+    "Deployment/domain name validation error: domain 'Landens_grok_ai' rejected because it contains an underscore; domains must be 5–50 chars and only letters, numbers, hyphens.",
+    "Download flow is not working reliably (user reports video is not actually downloadable).",
+    "Generation progress/in-progress preview is insufficient (user wants to see progress and see the video as it is being made).",
+    "Video generation may still be running in demo/placeholder mode or not producing real video output end-to-end (user reports it must actually generate a video).",
+    "Video creation/generation is failing with an error when making the video (needs investigation and fix)."
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -222,6 +226,70 @@
         "REQ-27"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-ensure-demo-mode-clip-generation-produces-an-actual-playable-video-file-e-g-webm-mp4-rather-than-an-image-blob-url-so-the-app-always-generates-a-real-video-asset-end-to-end-when-using-the-demo-provider",
+      "title": "Ensure Demo-mode clip generation produces an actual playable video file (e.g., WebM/MP4) rather than an image blob URL, so the app always generates a real video asset end-to-end when using the Demo provider.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-final-and-per-clip-downloads-reliable-by-downloading-as-a-blob-and-saving-with-a-correct-filename-extension-with-clear-error-handling-when-a-url-cannot-be-downloaded-due-to-browser-cors-limitations",
+      "title": "Make final and per-clip downloads reliable by downloading as a Blob and saving with a correct filename/extension, with clear error handling when a URL cannot be downloaded due to browser/CORS limitations.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-show-incremental-in-progress-preview-of-generated-output-as-each-clip-finishes-generating-display-an-embedded-playable-video-preview-for-that-clip-in-the-clips-step-not-only-a-thumbnail-and-keep-the-preview-visible-while-subsequent-clips-continue-generating",
+      "title": "Show incremental, in-progress preview of generated output: as each clip finishes generating, display an embedded playable <video> preview for that clip in the Clips step (not only a thumbnail), and keep the preview visible while subsequent clips continue generating.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-improve-progress-reporting-for-video-creation-keep-the-existing-overall-clip-progress-and-add-composition-download-step-progress-that-reflects-real-composition-download-preparation-work-not-just-simulated-percentages-with-user-facing-english-text-indicating-what-is-happening",
+      "title": "Improve progress reporting for video creation: keep the existing overall clip progress, and add composition/download-step progress that reflects real composition/download preparation work (not just simulated percentages) with user-facing English text indicating what is happening.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-app-generates-a-real-video-in-grok-mode-when-configured-validate-that-grok-clip-responses-point-to-playable-video-urls-surface-a-clear-english-error-if-the-grok-api-returns-invalid-non-video-data-and-do-not-proceed-to-compose-download-until-at-least-one-playable-clip-has-been-produced-or-errors-are-shown",
+      "title": "Ensure the app generates a real video in Grok mode when configured: validate that Grok clip responses point to playable video URLs, surface a clear English error if the Grok API returns invalid/non-video data, and do not proceed to Compose/Download until at least one playable clip has been produced (or errors are shown).",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-or-prevent-browser-native-constraint-validation-messages-e-g-the-string-did-not-match-the-expected-pattern-from-appearing-during-the-video-creation-flow-and-replace-them-with-in-app-validation-english-error-messaging",
+      "title": "Remove or prevent browser-native constraint validation messages (e.g., \"The string did not match the expected pattern\") from appearing during the video creation flow, and replace them with in-app validation + English error messaging.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-harden-runtime-grok-configuration-input-handling-so-invalid-partial-values-cannot-break-generation-validate-and-normalize-the-endpoint-before-saving-and-surface-actionable-errors-without-advancing-the-user-to-later-steps",
+      "title": "Harden runtime Grok configuration input handling so invalid/partial values cannot break generation: validate and normalize the endpoint before saving, and surface actionable errors without advancing the user to later steps.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-app-provides-a-clear-user-visible-error-state-when-generation-cannot-start-or-fails-immediately-e-g-segment-derivation-fails-including-when-reference-images-are-uploaded-e-g-img-0787-jpeg",
+      "title": "Ensure the app provides a clear, user-visible error state when generation cannot start or fails immediately (e.g., segment derivation fails), including when reference images are uploaded (e.g., IMG_0787.jpeg).",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -284,6 +352,12 @@
     {
       "id": "AR-10",
       "summary": "Increase the maximum allowed per-clip duration to 2 minutes (120s)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Ensure real (non-demo) video generation works end-to-end, with reliable download and an in-progress experience that shows generation progress and incremental clip/video previews as assets are produced",
       "reqIds": [],
       "status": "pending"
     }

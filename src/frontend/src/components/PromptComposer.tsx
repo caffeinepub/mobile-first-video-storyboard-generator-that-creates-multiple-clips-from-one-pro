@@ -14,6 +14,7 @@ import type { ReferenceImageFile } from '../lib/referenceImages';
 import type { VideoProvider } from '../providers/videoProvider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { saveRuntimeConfig, clearRuntimeConfig, loadRuntimeConfig } from '../lib/grokRuntimeConfig';
+import { isEndpointFormatValid } from '../lib/grokEndpoint';
 import { toast } from 'sonner';
 
 interface PromptComposerProps {
@@ -52,6 +53,15 @@ export default function PromptComposer({
   const [showRuntimeConfig, setShowRuntimeConfig] = useState(false);
   const [runtimeEndpoint, setRuntimeEndpoint] = useState('');
   const [runtimeApiKey, setRuntimeApiKey] = useState('');
+  const [endpointError, setEndpointError] = useState('');
+
+  const handleEndpointChange = (value: string) => {
+    setRuntimeEndpoint(value);
+    // Clear error when user starts typing
+    if (endpointError) {
+      setEndpointError('');
+    }
+  };
 
   const handleSaveRuntimeConfig = () => {
     if (!runtimeEndpoint.trim() || !runtimeApiKey.trim()) {
@@ -59,15 +69,18 @@ export default function PromptComposer({
       return;
     }
 
-    try {
-      saveRuntimeConfig(runtimeEndpoint, runtimeApiKey);
+    const result = saveRuntimeConfig(runtimeEndpoint, runtimeApiKey);
+    
+    if (result.success) {
       toast.success('Grok AI is now active and ready to use');
       setShowRuntimeConfig(false);
       setRuntimeEndpoint('');
       setRuntimeApiKey('');
+      setEndpointError('');
       // Provider will auto-switch to Grok via the config change subscription
-    } catch (error) {
-      toast.error('Failed to save configuration');
+    } else {
+      setEndpointError(result.error || 'Failed to save configuration');
+      toast.error(result.error || 'Failed to save configuration');
     }
   };
 
@@ -77,6 +90,7 @@ export default function PromptComposer({
     setShowRuntimeConfig(false);
     setRuntimeEndpoint('');
     setRuntimeApiKey('');
+    setEndpointError('');
   };
 
   const handleShowRuntimeConfig = () => {
@@ -85,6 +99,7 @@ export default function PromptComposer({
       setRuntimeEndpoint(config.endpoint);
       setRuntimeApiKey(config.apiKey);
     }
+    setEndpointError('');
     setShowRuntimeConfig(true);
   };
 
@@ -202,7 +217,10 @@ export default function PromptComposer({
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={() => setShowRuntimeConfig(false)}
+                  onClick={() => {
+                    setShowRuntimeConfig(false);
+                    setEndpointError('');
+                  }}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -213,11 +231,24 @@ export default function PromptComposer({
                   <Label htmlFor="grok-endpoint">Grok API Endpoint</Label>
                   <Input
                     id="grok-endpoint"
-                    type="url"
-                    placeholder="https://api.example.com"
+                    type="text"
+                    placeholder="https://api.example.com/v1/generate"
                     value={runtimeEndpoint}
-                    onChange={(e) => setRuntimeEndpoint(e.target.value)}
+                    onChange={(e) => handleEndpointChange(e.target.value)}
+                    className={endpointError ? 'border-destructive' : ''}
                   />
+                  {endpointError && (
+                    <p className="text-xs text-destructive flex items-start gap-1">
+                      <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>{endpointError}</span>
+                    </p>
+                  )}
+                  {!endpointError && runtimeEndpoint && !isEndpointFormatValid(runtimeEndpoint) && (
+                    <p className="text-xs text-muted-foreground flex items-start gap-1">
+                      <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>Endpoint must start with http:// or https://</span>
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

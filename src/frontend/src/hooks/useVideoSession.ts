@@ -1,186 +1,323 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useActor } from './useActor';
-import type { PublicSegment, VideoSessionId } from '../backend';
-import { deriveSegments, generateClip, type ClipData } from '../providers/videoProvider';
-import { toast } from 'sonner';
+import { generateClip, type ClipData } from '../providers/videoProvider';
+import type { PublicSegment } from '../backend';
+import type { ReferenceImageFile } from '../lib/referenceImages';
+import { getGrokConfig } from '../providers/grokProvider';
+import { getCurrentProvider } from '../providers/videoProvider';
+
+export interface VideoSessionState {
+  sessionId: bigint | null;
+  segments: PublicSegment[];
+  clips: ClipData[];
+  isGenerating: boolean;
+  error: string | null;
+  generationError: string | null; // Run-level error before segments exist
+  referenceImages: ReferenceImageFile[];
+}
 
 export function useVideoSession() {
   const { actor } = useActor();
-  const [sessionId, setSessionId] = useState<VideoSessionId | null>(null);
-  const [segments, setSegments] = useState<PublicSegment[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentRunImages, setCurrentRunImages] = useState<File[]>([]);
+  const [state, setState] = useState<VideoSessionState>({
+    sessionId: null,
+    segments: [],
+    clips: [],
+    isGenerating: false,
+    error: null,
+    generationError: null,
+    referenceImages: []
+  });
+  
+  // Track which segments are currently being generated to prevent duplicate requests
+  const generatingSegments = useRef<Set<number>>(new Set());
 
-  const startGeneration = useCallback(
-    async (
-      prompt: string,
-      clipCount: number,
-      perClipDuration: number,
-      referenceImages?: File[]
-    ): Promise<ClipData[] | null> => {
-      if (!actor) {
-        toast.error('Backend not ready');
-        return null;
+  const setReferenceImages = useCallback((images: ReferenceImageFile[]) => {
+    setState(prev => ({ ...prev, referenceImages: images }));
+  }, []);
+
+  const startGeneration = useCallback(async (
+    prompt: string,
+    clipCount: number,
+    perClipDuration: number
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!actor) {
+      return { 
+        success: false, 
+        error: 'Backend connection not available. Please refresh the page and try again.' 
+      };
+    }
+
+    // Preflight check: validate provider configuration
+    const currentProvider = getCurrentProvider();
+    if (currentProvider === 'grok') {
+      const grokConfig = getGrokConfig();
+      if (!grokConfig) {
+        return {
+          success: false,
+          error: 'Grok AI is not configured. Please configure Grok settings (runtime configuration or environment variables) in the Provider section above before generating videos.'
+        };
       }
+    }
 
-      setIsGenerating(true);
+    try {
+      // Clear any previous generation error
+      setState(prev => ({ 
+        ...prev, 
+        error: null, 
+        generationError: null,
+        isGenerating: true 
+      }));
+
+      // Derive segment prompts
+      const segmentPrompts = Array(clipCount).fill(prompt);
       
-      // Store reference images for this run
-      const runImages = referenceImages || [];
-      setCurrentRunImages(runImages);
+      // Create session
+      const sessionId = await actor.createSession(
+        prompt,
+        segmentPrompts,
+        BigInt(perClipDuration)
+      );
 
-      try {
-        // Derive segment prompts with reference images
-        const segmentPrompts = await deriveSegments(prompt, clipCount, runImages);
-        
-        // Create session in backend
-        const newSessionId = await actor.createSession(
-          prompt,
-          segmentPrompts,
-          BigInt(perClipDuration)
-        );
-        setSessionId(newSessionId);
+      // Fetch initial session state
+      const session = await actor.getSession(sessionId);
+      
+      setState(prev => ({
+        ...prev,
+        sessionId,
+        segments: session.segments,
+        clips: new Array(session.segments.length).fill(null),
+        isGenerating: true,
+        error: null,
+        generationError: null
+      }));
 
-        // Initialize segments with queued status
-        const initialSegments: PublicSegment[] = segmentPrompts.map(p => ({
-          prompt: p,
-          status: { __kind__: 'queued' as const, queued: null }
-        }));
-        setSegments(initialSegments);
+      // Start generating clips
+      generateClips(sessionId, session.segments);
+      
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to start video generation. Please try again.';
+      
+      setState(prev => ({ 
+        ...prev, 
+        isGenerating: false,
+        generationError: state.referenceImages.length > 0
+          ? `${errorMessage} (Note: This request included ${state.referenceImages.length} reference image${state.referenceImages.length > 1 ? 's' : ''})`
+          : errorMessage
+      }));
+      
+      return { 
+        success: false, 
+        error: errorMessage 
+      };
+    }
+  }, [actor, state.referenceImages.length]);
 
-        // Generate all clips with reference images
-        const clips: ClipData[] = [];
-        for (let i = 0; i < segmentPrompts.length; i++) {
-          try {
-            // Update status to generating
-            setSegments(prev => {
-              const updated = [...prev];
-              updated[i] = { ...updated[i], status: { __kind__: 'generating', generating: null } };
-              return updated;
-            });
+  const generateClips = useCallback(async (
+    sessionId: bigint,
+    segments: PublicSegment[]
+  ) => {
+    if (!actor) return;
 
-            // Generate clip with reference images
-            const clip = await generateClip(segmentPrompts[i], perClipDuration, i, runImages);
-            clips.push(clip);
+    const referenceImageFiles = state.referenceImages.map(img => img.file);
 
-            // Update status to completed
-            setSegments(prev => {
-              const updated = [...prev];
-              updated[i] = { ...updated[i], status: { __kind__: 'completed', completed: null } };
-              return updated;
-            });
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      
+      // Skip if already generating or completed
+      if (generatingSegments.current.has(i)) continue;
+      if (segment.status.__kind__ === 'completed') continue;
+      if (segment.status.__kind__ === 'generating') continue;
 
-            // Update backend
-            await actor.updateSegmentStatus(
-              newSessionId,
-              BigInt(i),
-              { __kind__: 'completed', completed: null }
-            );
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Generation failed';
-            
-            // Update status to failed
-            setSegments(prev => {
-              const updated = [...prev];
-              updated[i] = { ...updated[i], status: { __kind__: 'failed', failed: errorMessage } };
-              return updated;
-            });
-
-            // Update backend
-            await actor.updateSegmentStatus(
-              newSessionId,
-              BigInt(i),
-              { __kind__: 'failed', failed: errorMessage }
-            );
-          }
-        }
-
-        return clips;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to start generation';
-        toast.error(message);
-        return null;
-      } finally {
-        setIsGenerating(false);
-      }
-    },
-    [actor]
-  );
-
-  const retrySegment = useCallback(
-    async (index: number): Promise<ClipData | null> => {
-      if (!actor || !sessionId || !segments[index]) {
-        return null;
-      }
+      generatingSegments.current.add(i);
 
       try {
         // Update status to generating
-        setSegments(prev => {
-          const updated = [...prev];
-          updated[index] = { ...updated[index], status: { __kind__: 'generating', generating: null } };
-          return updated;
-        });
-
-        // Get duration from session
-        const session = await actor.getSession(sessionId);
-        const duration = Number(session.perClipDuration);
-
-        // Generate clip with the same reference images from the current run
-        const clip = await generateClip(segments[index].prompt, duration, index, currentRunImages);
-
-        // Update status to completed
-        setSegments(prev => {
-          const updated = [...prev];
-          updated[index] = { ...updated[index], status: { __kind__: 'completed', completed: null } };
-          return updated;
-        });
-
-        // Update backend
         await actor.updateSegmentStatus(
           sessionId,
-          BigInt(index),
+          BigInt(i),
+          { __kind__: 'generating', generating: null }
+        );
+
+        // Fetch updated session
+        const session = await actor.getSession(sessionId);
+        setState(prev => ({
+          ...prev,
+          segments: session.segments
+        }));
+
+        // Generate video clip
+        const clipData = await generateClip(
+          segment.prompt,
+          Number(session.perClipDuration),
+          i,
+          referenceImageFiles.length > 0 ? referenceImageFiles : undefined
+        );
+
+        // Update status to completed
+        await actor.updateSegmentStatus(
+          sessionId,
+          BigInt(i),
           { __kind__: 'completed', completed: null }
         );
 
-        toast.success(`Clip ${index + 1} regenerated successfully`);
-        return clip;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Retry failed';
-        
-        // Update status to failed
-        setSegments(prev => {
-          const updated = [...prev];
-          updated[index] = { ...updated[index], status: { __kind__: 'failed', failed: errorMessage } };
-          return updated;
+        // Fetch updated session and update clips immediately
+        const updatedSession = await actor.getSession(sessionId);
+        setState(prev => {
+          const newClips = [...prev.clips];
+          newClips[i] = clipData;
+          return {
+            ...prev,
+            segments: updatedSession.segments,
+            clips: newClips
+          };
         });
 
-        // Update backend
+      } catch (error) {
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : 'Generation failed';
+        
+        // Update status to failed
         await actor.updateSegmentStatus(
           sessionId,
-          BigInt(index),
+          BigInt(i),
           { __kind__: 'failed', failed: errorMessage }
         );
 
-        toast.error(errorMessage);
-        return null;
+        // Fetch updated session
+        const session = await actor.getSession(sessionId);
+        setState(prev => ({
+          ...prev,
+          segments: session.segments
+        }));
+      } finally {
+        generatingSegments.current.delete(i);
       }
-    },
-    [actor, sessionId, segments, currentRunImages]
-  );
+    }
+
+    // Check if all segments are done
+    setState(prev => {
+      const allDone = prev.segments.every(
+        s => s.status.__kind__ === 'completed' || s.status.__kind__ === 'failed'
+      );
+      return {
+        ...prev,
+        isGenerating: !allDone
+      };
+    });
+  }, [actor, state.referenceImages]);
+
+  const retrySegment = useCallback(async (index: number) => {
+    if (!actor || !state.sessionId) return;
+
+    const segment = state.segments[index];
+    if (!segment) return;
+
+    // Prevent duplicate retry requests
+    if (generatingSegments.current.has(index)) return;
+
+    generatingSegments.current.add(index);
+
+    try {
+      // Update status to generating
+      await actor.updateSegmentStatus(
+        state.sessionId,
+        BigInt(index),
+        { __kind__: 'generating', generating: null }
+      );
+
+      // Fetch updated session
+      const session = await actor.getSession(state.sessionId);
+      setState(prev => ({
+        ...prev,
+        segments: session.segments,
+        isGenerating: true
+      }));
+
+      const referenceImageFiles = state.referenceImages.map(img => img.file);
+
+      // Generate video clip
+      const clipData = await generateClip(
+        segment.prompt,
+        Number(session.perClipDuration),
+        index,
+        referenceImageFiles.length > 0 ? referenceImageFiles : undefined
+      );
+
+      // Update status to completed
+      await actor.updateSegmentStatus(
+        state.sessionId,
+        BigInt(index),
+        { __kind__: 'completed', completed: null }
+      );
+
+      // Fetch updated session and update clips immediately
+      const updatedSession = await actor.getSession(state.sessionId);
+      setState(prev => {
+        const newClips = [...prev.clips];
+        newClips[index] = clipData;
+        return {
+          ...prev,
+          segments: updatedSession.segments,
+          clips: newClips
+        };
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Retry failed';
+      
+      // Update status to failed
+      await actor.updateSegmentStatus(
+        state.sessionId,
+        BigInt(index),
+        { __kind__: 'failed', failed: errorMessage }
+      );
+
+      // Fetch updated session
+      const session = await actor.getSession(state.sessionId);
+      setState(prev => ({
+        ...prev,
+        segments: session.segments
+      }));
+    } finally {
+      generatingSegments.current.delete(index);
+      
+      // Check if all segments are done
+      setState(prev => {
+        const allDone = prev.segments.every(
+          s => s.status.__kind__ === 'completed' || s.status.__kind__ === 'failed'
+        );
+        return {
+          ...prev,
+          isGenerating: !allDone
+        };
+      });
+    }
+  }, [actor, state.sessionId, state.segments, state.referenceImages]);
 
   const reset = useCallback(() => {
-    setSessionId(null);
-    setSegments([]);
-    setIsGenerating(false);
-    setCurrentRunImages([]);
+    generatingSegments.current.clear();
+    setState({
+      sessionId: null,
+      segments: [],
+      clips: [],
+      isGenerating: false,
+      error: null,
+      generationError: null,
+      referenceImages: []
+    });
   }, []);
 
   return {
-    sessionId,
-    segments,
-    isGenerating,
+    ...state,
     startGeneration,
     retrySegment,
-    reset
+    reset,
+    setReferenceImages
   };
 }

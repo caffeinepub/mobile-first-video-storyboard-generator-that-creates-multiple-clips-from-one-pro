@@ -187,6 +187,64 @@ async function demoDeriveSegments(prompt: string, clipCount: number): Promise<st
   return segments;
 }
 
+/**
+ * Record a canvas animation as a real video using MediaRecorder
+ */
+async function recordCanvasVideo(
+  canvas: HTMLCanvasElement,
+  durationMs: number
+): Promise<Blob> {
+  const stream = canvas.captureStream(30); // 30 FPS
+  
+  // Try to use a supported video format
+  const mimeTypes = [
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4'
+  ];
+  
+  let mimeType = 'video/webm';
+  for (const type of mimeTypes) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      mimeType = type;
+      break;
+    }
+  }
+
+  const mediaRecorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: 2500000 // 2.5 Mbps
+  });
+
+  const chunks: Blob[] = [];
+  
+  return new Promise((resolve, reject) => {
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType });
+      resolve(blob);
+    };
+
+    mediaRecorder.onerror = (event) => {
+      reject(new Error('MediaRecorder error'));
+    };
+
+    mediaRecorder.start();
+
+    // Stop recording after the specified duration
+    setTimeout(() => {
+      mediaRecorder.stop();
+      stream.getTracks().forEach(track => track.stop());
+    }, durationMs);
+  });
+}
+
 async function demoGenerateClip(
   prompt: string,
   duration: number,
@@ -195,7 +253,7 @@ async function demoGenerateClip(
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
   
-  // Create a canvas-based video
+  // Create a canvas-based animated video
   const canvas = document.createElement('canvas');
   canvas.width = 1280;
   canvas.height = 720;
@@ -207,81 +265,107 @@ async function demoGenerateClip(
   
   // Generate a unique color based on index
   const hue = (index * 137.5) % 360;
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, `hsl(${hue}, 70%, 50%)`);
-  gradient.addColorStop(1, `hsl(${(hue + 60) % 360}, 70%, 30%)`);
   
-  ctx.fillStyle = gradient;
+  // Animation parameters
+  const startTime = Date.now();
+  const durationMs = duration * 1000;
+  let animationFrame: number | undefined;
+  
+  // Animate the canvas
+  const animate = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / durationMs, 1);
+    
+    // Create animated gradient
+    const gradient = ctx.createLinearGradient(
+      0, 
+      0, 
+      canvas.width * Math.cos(progress * Math.PI * 2), 
+      canvas.height * Math.sin(progress * Math.PI * 2)
+    );
+    gradient.addColorStop(0, `hsl(${hue}, 70%, 50%)`);
+    gradient.addColorStop(0.5, `hsl(${(hue + 60) % 360}, 70%, 40%)`);
+    gradient.addColorStop(1, `hsl(${(hue + 120) % 360}, 70%, 30%)`);
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add animated text
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 48px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Pulsing effect
+    const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(scale, scale);
+    ctx.fillText(`Clip ${index + 1}`, 0, -50);
+    ctx.font = '32px Inter, sans-serif';
+    ctx.fillText(prompt.substring(0, 50), 0, 20);
+    ctx.restore();
+    
+    // Progress bar
+    const barWidth = canvas.width * 0.6;
+    const barHeight = 8;
+    const barX = (canvas.width - barWidth) / 2;
+    const barY = canvas.height - 100;
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+    
+    if (progress < 1) {
+      animationFrame = requestAnimationFrame(animate);
+    }
+  };
+  
+  // Start animation
+  animate();
+  
+  // Record the canvas as video
+  const videoBlob = await recordCanvasVideo(canvas, durationMs);
+  
+  // Stop animation
+  if (animationFrame !== undefined) {
+    cancelAnimationFrame(animationFrame);
+  }
+  
+  // Create blob URL for the video
+  const videoUrl = URL.createObjectURL(videoBlob);
+  
+  // Create a thumbnail from the first frame
+  ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // Add text
   ctx.fillStyle = 'white';
-  ctx.font = 'bold 48px sans-serif';
+  ctx.font = 'bold 48px Inter, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 10;
+  ctx.fillText(`Clip ${index + 1}`, canvas.width / 2, canvas.height / 2 - 50);
+  ctx.font = '32px Inter, sans-serif';
+  ctx.fillText(prompt.substring(0, 50), canvas.width / 2, canvas.height / 2 + 20);
   
-  const lines = wrapText(ctx, prompt, canvas.width - 100);
-  const lineHeight = 60;
-  const startY = (canvas.height - lines.length * lineHeight) / 2;
-  
-  lines.forEach((line, i) => {
-    ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
-  });
-  
-  // Convert canvas to blob
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(blob => {
-      if (blob) resolve(blob);
-      else reject(new Error('Failed to create blob'));
-    }, 'image/jpeg', 0.9);
-  });
-  
-  const thumbnailUrl = URL.createObjectURL(blob);
+  const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
   
   return {
-    url: thumbnailUrl,
+    url: videoUrl,
     thumbnailUrl,
     duration,
     prompt
   };
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const metrics = ctx.measureText(testLine);
-    
-    if (metrics.width > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-  
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-  
-  return lines;
-}
-
-// Public API with provider routing - no automatic fallback
+// Public API
 export async function deriveSegments(
   prompt: string,
   clipCount: number,
   referenceImages?: File[]
 ): Promise<string[]> {
   if (currentProvider === 'grok') {
-    return await grokDeriveSegments(prompt, clipCount, referenceImages);
+    return grokDeriveSegments(prompt, clipCount, referenceImages);
   }
-  
   return demoDeriveSegments(prompt, clipCount);
 }
 
@@ -292,8 +376,7 @@ export async function generateClip(
   referenceImages?: File[]
 ): Promise<ClipData> {
   if (currentProvider === 'grok') {
-    return await grokGenerateClip(prompt, duration, index, referenceImages);
+    return grokGenerateClip(prompt, duration, index, referenceImages);
   }
-  
   return demoGenerateClip(prompt, duration, index);
 }

@@ -1,5 +1,7 @@
 // Client-side runtime Grok configuration management
 
+import { validateAndNormalizeEndpoint } from './grokEndpoint';
+
 const GROK_ENDPOINT_KEY = 'grok-api-endpoint';
 const GROK_API_KEY_KEY = 'grok-api-key';
 const CONFIG_CHANGE_EVENT = 'grok-config-changed';
@@ -7,6 +9,11 @@ const CONFIG_CHANGE_EVENT = 'grok-config-changed';
 export interface RuntimeGrokConfig {
   endpoint: string;
   apiKey: string;
+}
+
+export interface SaveConfigResult {
+  success: boolean;
+  error?: string;
 }
 
 /**
@@ -31,18 +38,41 @@ export function loadRuntimeConfig(): RuntimeGrokConfig | null {
 }
 
 /**
- * Save runtime Grok configuration to localStorage
+ * Save runtime Grok configuration to localStorage with validation
  */
-export function saveRuntimeConfig(endpoint: string, apiKey: string): void {
+export function saveRuntimeConfig(endpoint: string, apiKey: string): SaveConfigResult {
+  // Validate API key
+  const trimmedApiKey = apiKey.trim();
+  if (!trimmedApiKey) {
+    return {
+      success: false,
+      error: 'API key is required'
+    };
+  }
+  
+  // Validate and normalize endpoint
+  const validation = validateAndNormalizeEndpoint(endpoint);
+  if (!validation.valid) {
+    return {
+      success: false,
+      error: validation.error
+    };
+  }
+  
   try {
-    localStorage.setItem(GROK_ENDPOINT_KEY, endpoint.trim());
-    localStorage.setItem(GROK_API_KEY_KEY, apiKey.trim());
+    localStorage.setItem(GROK_ENDPOINT_KEY, validation.normalized!);
+    localStorage.setItem(GROK_API_KEY_KEY, trimmedApiKey);
     
     // Notify app of config change
     window.dispatchEvent(new CustomEvent(CONFIG_CHANGE_EVENT));
+    
+    return { success: true };
   } catch (error) {
     console.error('Failed to save runtime Grok config:', error);
-    throw new Error('Failed to save configuration');
+    return {
+      success: false,
+      error: 'Failed to save configuration to browser storage'
+    };
   }
 }
 
@@ -65,7 +95,13 @@ export function clearRuntimeConfig(): void {
  * Check if runtime config is valid (non-empty strings)
  */
 export function isRuntimeConfigValid(config: RuntimeGrokConfig | null): boolean {
-  return !!(config && config.endpoint.trim() && config.apiKey.trim());
+  if (!config || !config.endpoint.trim() || !config.apiKey.trim()) {
+    return false;
+  }
+  
+  // Also validate endpoint format
+  const validation = validateAndNormalizeEndpoint(config.endpoint);
+  return validation.valid;
 }
 
 /**

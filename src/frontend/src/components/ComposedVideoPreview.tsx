@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Download, Play, AlertCircle, CheckCircle2, Film } from 'lucide-react';
-import { composeVideos, canCompose } from '../lib/videoCompose';
+import { Download, Play, AlertCircle, CheckCircle2, Film, Info } from 'lucide-react';
+import { composeVideos, canCompose, getCompositionCapabilityMessage } from '../lib/videoCompose';
+import { downloadVideo } from '../lib/download';
 import type { ClipData } from '../providers/videoProvider';
 import { toast } from 'sonner';
 
@@ -23,8 +24,11 @@ export default function ComposedVideoPreview({
 }: ComposedVideoPreviewProps) {
   const [composing, setComposing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<number | null>(null);
   const compositionSupported = canCompose();
+  const capabilityMessage = getCompositionCapabilityMessage(clips.length);
 
   useEffect(() => {
     if (isComposing && !composedVideoUrl && clips.length > 0) {
@@ -35,34 +39,52 @@ export default function ComposedVideoPreview({
   const handleCompose = async () => {
     if (!compositionSupported) {
       setError('Video composition is not supported in this browser. You can download individual clips below.');
+      onComposed(clips[0]?.url || '');
       return;
     }
 
     setComposing(true);
     setError(null);
     setProgress(0);
+    setStage('Starting...');
 
     try {
-      const videoUrl = await composeVideos(clips, (p) => setProgress(p));
+      const videoUrl = await composeVideos(clips, (p, s) => {
+        setProgress(p);
+        if (s) setStage(s);
+      });
       onComposed(videoUrl);
-      toast.success('Video composed successfully!');
+      toast.success('Video ready!');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to compose video';
       setError(message);
       toast.error(message);
+      // Still allow individual clip downloads
+      if (clips.length > 0) {
+        onComposed(clips[0].url);
+      }
     } finally {
       setComposing(false);
+      setStage('');
     }
   };
 
-  const handleDownload = (url: string, filename: string) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    toast.success('Download started!');
+  const handleDownload = async (url: string, filename: string, clipIndex?: number) => {
+    if (clipIndex !== undefined) {
+      setDownloading(clipIndex);
+    }
+
+    const result = await downloadVideo(url, filename);
+    
+    if (clipIndex !== undefined) {
+      setDownloading(null);
+    }
+
+    if (result.success) {
+      toast.success('Download started!');
+    } else {
+      toast.error(result.error || 'Download failed');
+    }
   };
 
   if (composing) {
@@ -76,7 +98,7 @@ export default function ComposedVideoPreview({
             Composing Video
           </h2>
           <p className="text-muted-foreground">
-            {clips.length === 1 ? 'Preparing your clip...' : 'Stitching your clips together...'}
+            {clips.length === 1 ? 'Preparing your clip...' : 'Preparing your video...'}
           </p>
         </div>
 
@@ -84,9 +106,16 @@ export default function ComposedVideoPreview({
           <CardContent className="p-6">
             <div className="space-y-4">
               <Progress value={progress} className="h-3" />
-              <p className="text-sm text-muted-foreground text-center">
-                {Math.round(progress)}% complete
-              </p>
+              <div className="text-center space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {Math.round(progress)}% complete
+                </p>
+                {stage && (
+                  <p className="text-xs text-muted-foreground">
+                    {stage}
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -104,7 +133,7 @@ export default function ComposedVideoPreview({
           Your Video is Ready!
         </h2>
         <p className="text-muted-foreground">
-          {clips.length === 1 ? 'Preview and download your clip' : 'Preview and download your composed video'}
+          {clips.length === 1 ? 'Preview and download your clip' : 'Preview and download your video'}
         </p>
       </div>
 
@@ -115,15 +144,22 @@ export default function ComposedVideoPreview({
         </Alert>
       )}
 
+      {capabilityMessage && (
+        <Alert>
+          <Info className="w-4 h-4" />
+          <AlertDescription>{capabilityMessage}</AlertDescription>
+        </Alert>
+      )}
+
       {composedVideoUrl && (
         <Card className="border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Play className="w-5 h-5 text-primary" />
-              {clips.length === 1 ? 'Your Clip' : 'Final Video'}
+              {clips.length === 1 ? 'Your Clip' : 'Video Preview'}
             </CardTitle>
             <CardDescription>
-              {clips.length === 1 ? 'Your generated video clip' : 'Your complete video'}
+              {clips.length === 1 ? 'Your generated video clip' : 'Preview of the first clip'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -133,15 +169,16 @@ export default function ComposedVideoPreview({
                 controls
                 className="w-full"
                 playsInline
+                preload="metadata"
               />
             </div>
             <Button
-              onClick={() => handleDownload(composedVideoUrl, clips.length === 1 ? 'video-clip.mp4' : 'composed-video.mp4')}
+              onClick={() => handleDownload(composedVideoUrl, clips.length === 1 ? 'video-clip.webm' : 'video-preview.webm')}
               className="w-full"
               size="lg"
             >
               <Download className="w-4 h-4 mr-2" />
-              Download Video
+              {clips.length === 1 ? 'Download Video' : 'Download Preview'}
             </Button>
           </CardContent>
         </Card>
@@ -152,7 +189,7 @@ export default function ComposedVideoPreview({
           <CardHeader>
             <CardTitle>Individual Clips</CardTitle>
             <CardDescription>
-              Download clips separately if needed
+              Download each clip separately
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -161,28 +198,30 @@ export default function ComposedVideoPreview({
                 key={index}
                 className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/5 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  {clip.thumbnailUrl && (
-                    <img
-                      src={clip.thumbnailUrl}
-                      alt={`Clip ${index + 1}`}
-                      className="w-16 h-16 rounded object-cover"
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {clip.url && (
+                    <video
+                      src={clip.url}
+                      className="w-16 h-16 rounded object-cover bg-black"
+                      preload="metadata"
+                      muted
                     />
                   )}
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium">Clip {index + 1}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {clip.duration}s
+                    <p className="text-sm text-muted-foreground truncate">
+                      {clip.duration}s · {clip.prompt.substring(0, 40)}...
                     </p>
                   </div>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDownload(clip.url, `clip-${index + 1}.mp4`)}
+                  onClick={() => handleDownload(clip.url, `clip-${index + 1}.webm`, index)}
+                  disabled={downloading === index}
                 >
                   <Download className="w-3 h-3 mr-1" />
-                  Download
+                  {downloading === index ? 'Downloading...' : 'Download'}
                 </Button>
               </div>
             ))}

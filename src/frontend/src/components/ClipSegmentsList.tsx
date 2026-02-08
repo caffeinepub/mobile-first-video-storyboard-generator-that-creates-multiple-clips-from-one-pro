@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Clock, AlertCircle, RefreshCw, Film } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, RefreshCw, Film, ArrowLeft } from 'lucide-react';
 import type { PublicSegment } from '../backend';
 import type { ClipData } from '../providers/videoProvider';
 
@@ -11,11 +11,19 @@ interface ClipSegmentsListProps {
   segments: PublicSegment[];
   clips: ClipData[];
   onRetry: (index: number) => void;
+  generationError?: string | null;
+  onBackToPrompt?: () => void;
 }
 
-export default function ClipSegmentsList({ segments, clips, onRetry }: ClipSegmentsListProps) {
+export default function ClipSegmentsList({ 
+  segments, 
+  clips, 
+  onRetry,
+  generationError,
+  onBackToPrompt
+}: ClipSegmentsListProps) {
   const completedCount = segments.filter(s => s.status.__kind__ === 'completed').length;
-  const progress = (completedCount / segments.length) * 100;
+  const progress = segments.length > 0 ? (completedCount / segments.length) * 100 : 0;
 
   const getStatusIcon = (status: PublicSegment['status']) => {
     switch (status.__kind__) {
@@ -44,6 +52,63 @@ export default function ClipSegmentsList({ segments, clips, onRetry }: ClipSegme
         return <Badge variant="outline" className="text-muted-foreground">Queued</Badge>;
     }
   };
+
+  // Show error state if generation failed before segments were created
+  if (generationError && segments.length === 0) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mb-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h2 className="text-3xl font-display font-bold tracking-tight">
+            Generation Failed
+          </h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Unable to start video generation
+          </p>
+        </div>
+
+        <Card className="border-2 border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="w-5 h-5" />
+              Error Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert variant="destructive">
+              <AlertDescription className="text-sm">
+                {generationError}
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">
+                To resolve this issue:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Check your provider configuration (Grok settings or environment variables)</li>
+                <li>Verify your prompt and settings are valid</li>
+                <li>If using reference images, try removing them or using different images</li>
+                <li>Try again with different settings</li>
+              </ul>
+            </div>
+
+            {onBackToPrompt && (
+              <Button 
+                onClick={onBackToPrompt}
+                className="w-full"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Prompt
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -119,12 +184,14 @@ export default function ClipSegmentsList({ segments, clips, onRetry }: ClipSegme
                     </Alert>
                   )}
 
-                  {segment.status.__kind__ === 'completed' && clips[index]?.thumbnailUrl && (
-                    <div className="mt-2 rounded-lg overflow-hidden border border-border">
-                      <img
-                        src={clips[index].thumbnailUrl}
-                        alt={`Clip ${index + 1} preview`}
-                        className="w-full h-32 object-cover"
+                  {segment.status.__kind__ === 'completed' && clips[index]?.url && (
+                    <div className="mt-2 rounded-lg overflow-hidden border border-border bg-black">
+                      <video
+                        src={clips[index].url}
+                        controls
+                        playsInline
+                        className="w-full max-h-48 object-contain"
+                        preload="metadata"
                       />
                     </div>
                   )}
