@@ -1,4 +1,63 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-eliminate-the-user-visible-load-failed-experience-for-clip-and-composed-video-previews-by-ensuring-the-app-never-relies-on-the-browser-s-native-video-error-ui-instead-render-a-stable-in-app-error-state-with-clear-english-messaging-and-a-retry-action-wherever-a-video-url-cannot-be-loaded",
+      "featureTitle": "Eliminate the user-visible “load failed” experience for clip and composed video previews by ensuring the app never relies on the browser’s native <video> error UI; instead, render a stable in-app error state with clear English messaging and a retry action wherever a video URL cannot be loaded.",
+      "files": [
+        "frontend/src/components/ClipVideoPreview.tsx",
+        "frontend/src/components/ComposedVideoPreview.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-44"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-improve-the-generation-failed-experience-so-it-is-less-disruptive-and-more-actionable-keep-user-facing-copy-concise-and-provide-a-clear-recovery-path-back-to-prompt-and-try-again-while-preserving-technical-details-behind-an-explicit-disclosure",
+      "featureTitle": "Improve the “Generation Failed” experience so it is less disruptive and more actionable: keep user-facing copy concise, and provide a clear recovery path (Back to Prompt and Try Again) while preserving technical details behind an explicit disclosure.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/ClipSegmentsList.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-45"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-during-clip-generation-add-a-dedicated-in-progress-grok-website-view-so-users-can-watch-grok-while-videos-are-being-generated-by-attempting-to-embed-the-grok-website-in-app-and-providing-a-reliable-fallback-when-embedding-is-blocked",
+      "featureTitle": "During clip generation, add a dedicated in-progress “Grok website” view so users can watch Grok while videos are being generated, by attempting to embed the Grok website in-app and providing a reliable fallback when embedding is blocked.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/ClipSegmentsList.tsx",
+        "frontend/src/components/GrokLiveView.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-46"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

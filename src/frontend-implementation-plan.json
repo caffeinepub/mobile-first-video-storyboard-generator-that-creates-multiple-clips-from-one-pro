@@ -1,6 +1,76 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Set Grok (xAI) API key to the provided value",
-  "requirements": []
+  "title": "Stabilize video preview error handling and add Grok live view during generation",
+  "requirements": [
+    {
+      "id": "REQ-44",
+      "summary": "Replace native <video> error UI with stable in-app error states and retries for clip and composed previews, and avoid rendering <video> for invalid URLs.",
+      "acceptanceCriteria": [
+        "If a clip preview video fails to load, the UI shows an in-app error card (not the browser/native “load failed” message) with a Retry action.",
+        "If the composed/final preview video fails to load, the UI shows an in-app error state with clear next steps (e.g., retry compose, download individual clips).",
+        "The UI never attempts to render a <video> element for an empty/invalid URL (e.g., empty string), preventing spurious load errors.",
+        "Retry actions re-attempt loading/generation without requiring a full page reload."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/ClipVideoPreview.tsx",
+          "operation": "modify",
+          "description": "Harden clip preview rendering: do not render a <video> element for empty/invalid URLs; prevent the browser’s native error UI by only showing the player once metadata loads and by swapping to an in-app error card on load failure; keep a Retry action that re-attempts loading without a page refresh. Use shadcn-ui primitives (Alert, Button) for consistent in-app error UI. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/ComposedVideoPreview.tsx",
+          "operation": "modify",
+          "description": "Add composed preview load-failure handling that never relies on the native <video> error UI: gate <video> rendering on a non-empty URL; show a stable in-app error state when the composed preview cannot load with clear next steps (e.g., retry composition and/or download individual clips); ensure individual clip thumbnails/previews also avoid rendering <video> for empty URLs and fall back to in-app messaging. Use shadcn-ui Card/Alert/Button for the error state. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-45",
+      "summary": "Make the “Generation Failed” UI concise, actionable, and non-disruptive with Back to Prompt / Try Again and hidden technical details.",
+      "acceptanceCriteria": [
+        "When generation cannot start (e.g., segment derivation or initial request fails), the app shows a concise English summary describing what failed and what the user can do next.",
+        "The screen includes a primary recovery action that returns the user to the Prompt step, and does not strand the user on a dead-end error screen.",
+        "Any raw technical error text (request IDs, long stack traces, etc.) is only visible inside an explicit “Show technical details” disclosure (not shown by default)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Wire recovery actions into the generation-failed experience: pass a Try Again handler to the Clips step that re-invokes generation using the current prompt/settings (without full page reload), and ensure a Back to Prompt action remains available. (No changes to immutable frontend/src/main.tsx.)"
+        },
+        {
+          "path": "frontend/src/components/ClipSegmentsList.tsx",
+          "operation": "modify",
+          "description": "Revise the generation start-failure UI (when generationError exists and no segments): keep copy concise and action-oriented; provide a primary “Back to Prompt” action and a secondary “Try Again” action; keep raw technical details behind an explicit disclosure (Collapsible) and hidden by default. Use shadcn-ui components (Card, Alert, Button, Collapsible) to match the existing design system. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-46",
+      "summary": "Show an in-progress “Grok (live view)” section during clip generation with an embed attempt and a reliable fallback when embedding is blocked.",
+      "acceptanceCriteria": [
+        "While clips are generating, the Clips step displays a “Grok (live view)” section that attempts to show https://grok.com in an embedded view (e.g., iframe) with an explicit label that generation continues in the app.",
+        "If embedding https://grok.com is blocked by the browser/security headers, the app shows an in-app message in English explaining that Grok cannot be embedded and provides an “Open Grok in a new tab” button linking to https://grok.com.",
+        "The Grok live-view section is not shown outside of the generation phase (e.g., hidden once all clips are completed/failed)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/GrokLiveView.tsx",
+          "operation": "create",
+          "description": "Create a dedicated Grok live-view component that attempts to embed https://grok.com in an iframe during generation, shows an explicit label that generation continues in-app, and falls back to an in-app blocked-embed message with an “Open Grok in a new tab” button when the iframe cannot be shown (e.g., times out / does not load). Use shadcn-ui Card/Alert/Button for layout and messaging. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/ClipSegmentsList.tsx",
+          "operation": "modify",
+          "description": "Render the “Grok (live view)” section only during the generation phase (e.g., while any segment is queued/generating and/or while isGenerating is true), and hide it once all clips are completed/failed. Wire the new GrokLiveView component into the Clips step UI in a non-disruptive placement (e.g., above the segments list). Use shadcn-ui primitives for consistent styling. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Pass generation-phase state into the Clips step so GrokLiveView is shown only while clips are actively generating (and not after completion/failure). Ensure this wiring does not introduce any new routes/pages and remains within the existing step flow."
+        }
+      ]
+    }
+  ]
 }

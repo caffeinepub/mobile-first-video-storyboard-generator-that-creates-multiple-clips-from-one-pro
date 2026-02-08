@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RefreshCw } from 'lucide-react';
@@ -12,7 +12,6 @@ interface ClipVideoPreviewProps {
 export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipVideoPreviewProps) {
   const [hasError, setHasError] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Reset error state when URL changes
   useEffect(() => {
@@ -32,6 +31,22 @@ export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipV
     setHasError(false);
     onRetry();
   };
+
+  // Don't render video element for empty/invalid URLs
+  if (!url || url.trim() === '') {
+    return (
+      <div className={`rounded-lg overflow-hidden bg-muted border-2 border-muted-foreground/20 ${className}`}>
+        <div className="p-6 space-y-4">
+          <Alert>
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription className="text-sm">
+              Video preview not available. The clip may still be generating or failed to generate.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   // If there's an error, show error UI
   if (hasError) {
@@ -63,7 +78,6 @@ export default function ClipVideoPreview({ url, onRetry, className = '' }: ClipV
   return (
     <div className={`rounded-lg overflow-hidden bg-black ${className}`}>
       <video
-        ref={videoRef}
         src={url}
         controls
         className="w-full"

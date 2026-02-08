@@ -1,11 +1,11 @@
 {
   "frontend/src/index.css": "Global styles with warm coral/orange OKLCH color theme, mobile-optimized typography, comfortable tap targets, and safe area insets for mobile devices.",
   "frontend/tailwind.config.js": "Tailwind configuration with extended warm color palette, custom fonts (Inter, Outfit), mobile-friendly spacing, and custom animations for fade-in and glow effects.",
-  "frontend/src/App.tsx": "Main application component managing 4-step video generation flow with Grok-only mode, now automatically initializing the Grok API key on app load to the hardcoded value, with preflight validation that blocks generation when legacy/incorrect endpoints are detected.",
+  "frontend/src/App.tsx": "Main application component managing 4-step video generation flow with Grok-only mode, now passes Try Again handler to ClipSegmentsList for seamless retry without page reload.",
   "frontend/src/components/AppShell.tsx": "Layout wrapper with header (logo, title, and theme toggle button), subtle background image, and footer with attribution across all screens.",
   "frontend/src/components/PromptComposer.tsx": "Prompt input screen with Grok-only configuration UI, featuring legacy endpoint detection with clear warning alerts and one-click fix button to update to https://api.x.ai/v1, plus improved placeholder and validation messaging, now with corrected prop name for ReferenceImageUpload component.",
-  "frontend/src/components/ClipSegmentsList.tsx": "Displays segmented list of clips with live progress updates, now using the new ClipVideoPreview component for resilient clip rendering that handles load failures gracefully with retry actions instead of broken video elements.",
-  "frontend/src/components/ComposedVideoPreview.tsx": "Video preview and download screen with stage-based composition progress, reliable Blob-based downloads using the new download utility, proper error handling for CORS/network failures, and individual clip download options with loading states.",
+  "frontend/src/components/ClipSegmentsList.tsx": "Displays segmented list of clips with live progress updates, now includes Grok live view during generation, improved generation-failed UI with concise messaging and collapsible technical details, and Try Again action.",
+  "frontend/src/components/ComposedVideoPreview.tsx": "Video preview and download screen with enhanced error handling for video load failures, retry composition actions, and validation to prevent rendering video elements for empty URLs.",
   "frontend/src/components/MobileStepper.tsx": "Compact horizontal stepper showing 4-step progress flow with visual indicators for completed, current, and upcoming steps.",
   "frontend/src/components/BottomActionBar.tsx": "Fixed bottom action bar with primary CTA button optimized for one-thumb mobile usage with safe area insets.",
   "frontend/src/components/ErrorNotice.tsx": "Accessible error alert component with actionable recovery options (retry, start over) for failed operations.",
@@ -25,5 +25,6 @@
   "frontend/src/lib/videoValidation.ts": "Video validation utilities that check if URLs point to playable video content using HEAD requests, video element probing, and ClipData structure validation with clear English error messages.",
   "frontend/src/lib/grokEndpoint.ts": "Utility for validating and normalizing Grok API endpoints with canonical endpoint constant (https://api.x.ai/v1), automatic normalization of xAI URLs to canonical format, and clear English error messages.",
   "frontend/src/hooks/useLiveGenerationProgress.ts": "New React hook that provides real-time progress updates during clip generation, updating at least once per second with animated progress bar and descriptive labels showing which clip is currently generating.",
-  "frontend/src/components/ClipVideoPreview.tsx": "Resilient video preview component that renders a video element when healthy and transitions to a stable in-app error state on load failures, with explicit user-triggered retry control that prevents request spamming."
+  "frontend/src/components/ClipVideoPreview.tsx": "Resilient video preview component that validates URLs before rendering, prevents native browser error UI by showing in-app error states, and provides retry functionality without page reloads.",
+  "frontend/src/components/GrokLiveView.tsx": "New component that attempts to embed Grok.com in an iframe during video generation, with automatic fallback to an \"Open in new tab\" button when embedding is blocked by browser security."
 }

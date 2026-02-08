@@ -1,15 +1,73 @@
 {
   "kind": "build_request",
-  "title": "Set Grok (xAI) API key to the provided value",
+  "title": "Fix generation/preview failures and add an in-progress Grok website view during video generation",
   "priority": "normal",
-  "requirements": [],
+  "requirements": [
+    {
+      "id": "REQ-44",
+      "text": "Eliminate the user-visible “load failed” experience for clip and composed video previews by ensuring the app never relies on the browser’s native <video> error UI; instead, render a stable in-app error state with clear English messaging and a retry action wherever a video URL cannot be loaded.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "Fix when I'm trying to generate a video, fix it from saying load failed or generation failed, please."
+        ]
+      },
+      "acceptanceCriteria": [
+        "If a clip preview video fails to load, the UI shows an in-app error card (not the browser/native “load failed” message) with a Retry action.",
+        "If the composed/final preview video fails to load, the UI shows an in-app error state with clear next steps (e.g., retry compose, download individual clips).",
+        "The UI never attempts to render a <video> element for an empty/invalid URL (e.g., empty string), preventing spurious load errors.",
+        "Retry actions re-attempt loading/generation without requiring a full page reload."
+      ]
+    },
+    {
+      "id": "REQ-45",
+      "text": "Improve the “Generation Failed” experience so it is less disruptive and more actionable: keep user-facing copy concise, and provide a clear recovery path (Back to Prompt and Try Again) while preserving technical details behind an explicit disclosure.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "Fix when I'm trying to generate a video, fix it from saying load failed or generation failed, please."
+        ]
+      },
+      "acceptanceCriteria": [
+        "When generation cannot start (e.g., segment derivation or initial request fails), the app shows a concise English summary describing what failed and what the user can do next.",
+        "The screen includes a primary recovery action that returns the user to the Prompt step, and does not strand the user on a dead-end error screen.",
+        "Any raw technical error text (request IDs, long stack traces, etc.) is only visible inside an explicit “Show technical details” disclosure (not shown by default)."
+      ]
+    },
+    {
+      "id": "REQ-46",
+      "text": "During clip generation, add a dedicated in-progress “Grok website” view so users can watch Grok while videos are being generated, by attempting to embed the Grok website in-app and providing a reliable fallback when embedding is blocked.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "And show the user the grok website making the video while it generates"
+        ]
+      },
+      "acceptanceCriteria": [
+        "While clips are generating, the Clips step displays a “Grok (live view)” section that attempts to show https://grok.com in an embedded view (e.g., iframe) with an explicit label that generation continues in the app.",
+        "If embedding https://grok.com is blocked by the browser/security headers, the app shows an in-app message in English explaining that Grok cannot be embedded and provides an “Open Grok in a new tab” button linking to https://grok.com.",
+        "The Grok live-view section is not shown outside of the generation phase (e.g., hidden once all clips are completed/failed)."
+      ]
+    }
+  ],
   "constraints": [
-    "Frontend must not edit files in frontend/immutablePaths (compose existing UI components instead).",
-    "Backend must remain a single Motoko actor in backend/main.mo; only add backend/migration.mo if an upgrade requires state migration."
+    "Do not edit files under frontend/src/components/ui (read-only).",
+    "Do not edit frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx (immutable paths).",
+    "Backend must remain single-actor (all Motoko logic in backend/main.mo); only add migration.mo if state upgrades are required."
   ],
   "nonGoals": [
-    "Do not add or change any non-Grok providers or reintroduce Demo mode.",
-    "Do not implement new backend storage for API keys or secrets."
+    "Do not add third-party real-time streaming, WebSockets, or server-sent events to mirror Grok’s internal progress.",
+    "Do not integrate with any Grok/xAI website private APIs beyond the existing Grok generation API usage already present in the app.",
+    "Do not add new authentication providers (Internet Identity only)."
   ],
   "imageRequirements": {
     "required": [],

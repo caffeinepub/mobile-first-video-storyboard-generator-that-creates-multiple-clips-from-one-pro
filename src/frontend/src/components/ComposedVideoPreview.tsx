@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Download, Play, AlertCircle, CheckCircle2, Film, Info } from 'lucide-react';
+import { Download, Play, AlertCircle, CheckCircle2, Film, Info, RefreshCw } from 'lucide-react';
 import { composeVideos, canCompose, getCompositionCapabilityMessage } from '../lib/videoCompose';
 import { downloadVideo } from '../lib/download';
 import type { ClipData } from '../providers/videoProvider';
@@ -27,6 +27,7 @@ export default function ComposedVideoPreview({
   const [stage, setStage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [videoLoadError, setVideoLoadError] = useState(false);
   const compositionSupported = canCompose();
   const capabilityMessage = getCompositionCapabilityMessage(clips.length);
 
@@ -35,6 +36,11 @@ export default function ComposedVideoPreview({
       handleCompose();
     }
   }, [isComposing, composedVideoUrl, clips]);
+
+  // Reset video load error when URL changes
+  useEffect(() => {
+    setVideoLoadError(false);
+  }, [composedVideoUrl]);
 
   const handleCompose = async () => {
     if (!compositionSupported) {
@@ -85,6 +91,16 @@ export default function ComposedVideoPreview({
     } else {
       toast.error(result.error || 'Download failed');
     }
+  };
+
+  const handleVideoError = () => {
+    setVideoLoadError(true);
+  };
+
+  const handleRetryCompose = () => {
+    setError(null);
+    setVideoLoadError(false);
+    handleCompose();
   };
 
   if (composing) {
@@ -140,7 +156,20 @@ export default function ComposedVideoPreview({
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="w-4 h-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="space-y-3">
+            <p>{error}</p>
+            {compositionSupported && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryCompose}
+                className="w-full"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry Composition
+              </Button>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -151,7 +180,7 @@ export default function ComposedVideoPreview({
         </Alert>
       )}
 
-      {composedVideoUrl && (
+      {composedVideoUrl && composedVideoUrl.trim() !== '' && (
         <Card className="border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -163,23 +192,53 @@ export default function ComposedVideoPreview({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-lg overflow-hidden border-2 border-border bg-black">
-              <video
-                src={composedVideoUrl}
-                controls
-                className="w-full"
-                playsInline
-                preload="metadata"
-              />
-            </div>
-            <Button
-              onClick={() => handleDownload(composedVideoUrl, clips.length === 1 ? 'video-clip.webm' : 'video-preview.webm')}
-              className="w-full"
-              size="lg"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {clips.length === 1 ? 'Download Video' : 'Download Preview'}
-            </Button>
+            {videoLoadError ? (
+              <div className="rounded-lg overflow-hidden border-2 border-destructive/50 bg-muted p-6">
+                <Alert variant="destructive">
+                  <AlertCircle className="w-4 h-4" />
+                  <AlertDescription className="space-y-3">
+                    <p className="text-sm">
+                      Unable to load the composed video preview. The video file may be corrupted or inaccessible.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRetryCompose}
+                        className="w-full"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Retry Composition
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center">
+                        You can still download individual clips below
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-lg overflow-hidden border-2 border-border bg-black">
+                  <video
+                    src={composedVideoUrl}
+                    controls
+                    className="w-full"
+                    playsInline
+                    preload="metadata"
+                    onError={handleVideoError}
+                  />
+                </div>
+                <Button
+                  onClick={() => handleDownload(composedVideoUrl, clips.length === 1 ? 'video-clip.webm' : 'video-preview.webm')}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {clips.length === 1 ? 'Download Video' : 'Download Preview'}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -199,7 +258,7 @@ export default function ComposedVideoPreview({
                 className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/5 transition-colors"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {clip.url && (
+                  {clip.url && clip.url.trim() !== '' && (
                     <video
                       src={clip.url}
                       className="w-16 h-16 rounded object-cover bg-black"
@@ -218,7 +277,7 @@ export default function ComposedVideoPreview({
                   variant="outline"
                   size="sm"
                   onClick={() => handleDownload(clip.url, `clip-${index + 1}.webm`, index)}
-                  disabled={downloading === index}
+                  disabled={downloading === index || !clip.url || clip.url.trim() === ''}
                 >
                   <Download className="w-3 h-3 mr-1" />
                   {downloading === index ? 'Downloading...' : 'Download'}

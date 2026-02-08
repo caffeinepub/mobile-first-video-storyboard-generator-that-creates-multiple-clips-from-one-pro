@@ -1,23 +1,68 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-08T22:12:55.724Z",
+  "generatedAt": "2026-02-08T22:21:28.976Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 0,
-    "implemented": 0,
-    "items": []
+    "total": 3,
+    "implemented": 3,
+    "items": [
+      {
+        "id": "REQ-44",
+        "summary": "Eliminate the user-visible “load failed” experience for clip and composed video previews by ensuring the app never relies on the browser’s native <video> error UI; instead, render a stable in-app error state with clear English messaging and a retry action wherever a video URL cannot be loaded.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/ClipVideoPreview.tsx",
+          "frontend/src/components/ComposedVideoPreview.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/ClipVideoPreview.tsx",
+          "frontend/src/components/ComposedVideoPreview.tsx"
+        ]
+      },
+      {
+        "id": "REQ-45",
+        "summary": "Improve the “Generation Failed” experience so it is less disruptive and more actionable: keep user-facing copy concise, and provide a clear recovery path (Back to Prompt and Try Again) while preserving technical details behind an explicit disclosure.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx",
+          "frontend/src/components/ClipSegmentsList.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx",
+          "frontend/src/components/ClipSegmentsList.tsx"
+        ]
+      },
+      {
+        "id": "REQ-46",
+        "summary": "During clip generation, add a dedicated in-progress “Grok website” view so users can watch Grok while videos are being generated, by attempting to embed the Grok website in-app and providing a reliable fallback when embedding is blocked.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/GrokLiveView.tsx",
+          "frontend/src/components/ClipSegmentsList.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/GrokLiveView.tsx",
+          "frontend/src/components/ClipSegmentsList.tsx",
+          "frontend/src/App.tsx"
+        ]
+      }
+    ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
+    "frontend/src/components/ClipSegmentsList.tsx",
+    "frontend/src/components/ClipVideoPreview.tsx",
+    "frontend/src/components/ComposedVideoPreview.tsx",
+    "frontend/src/components/GrokLiveView.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

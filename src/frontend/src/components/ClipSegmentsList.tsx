@@ -10,6 +10,7 @@ import type { PublicSegment } from '../backend';
 import type { ClipData } from '../providers/videoProvider';
 import { useLiveGenerationProgress } from '../hooks/useLiveGenerationProgress';
 import ClipVideoPreview from './ClipVideoPreview';
+import GrokLiveView from './GrokLiveView';
 
 interface ClipSegmentsListProps {
   segments: PublicSegment[];
@@ -17,6 +18,7 @@ interface ClipSegmentsListProps {
   onRetry: (index: number) => void;
   generationError?: string | null;
   onBackToPrompt?: () => void;
+  onTryAgain?: () => void;
 }
 
 export default function ClipSegmentsList({ 
@@ -24,7 +26,8 @@ export default function ClipSegmentsList({
   clips, 
   onRetry,
   generationError,
-  onBackToPrompt
+  onBackToPrompt,
+  onTryAgain
 }: ClipSegmentsListProps) {
   const { progress, label } = useLiveGenerationProgress(segments);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
@@ -57,6 +60,11 @@ export default function ClipSegmentsList({
     }
   };
 
+  // Check if generation is in progress
+  const isGenerating = segments.some(s => 
+    s.status.__kind__ === 'generating' || s.status.__kind__ === 'queued'
+  );
+
   // Show error state if generation failed before segments were created
   if (generationError && segments.length === 0) {
     return (
@@ -66,10 +74,10 @@ export default function ClipSegmentsList({
             <AlertCircle className="w-8 h-8 text-destructive" />
           </div>
           <h2 className="text-3xl font-display font-bold tracking-tight">
-            Generation Failed
+            Unable to Start Generation
           </h2>
           <p className="text-muted-foreground max-w-md mx-auto">
-            Unable to start video generation
+            We couldn't start generating your video. Please check your settings and try again.
           </p>
         </div>
 
@@ -77,13 +85,13 @@ export default function ClipSegmentsList({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="w-5 h-5" />
-              Error Summary
+              What happened?
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="destructive">
               <AlertDescription className="text-sm">
-                The video generation service encountered an error. This is usually caused by incorrect configuration or network issues.
+                The video generation service couldn't process your request. This is usually caused by configuration issues or network problems.
               </AlertDescription>
             </Alert>
 
@@ -113,27 +121,39 @@ export default function ClipSegmentsList({
             </Collapsible>
 
             <div className="flex flex-col gap-2 pt-2">
-              <p className="text-sm font-medium text-muted-foreground">
-                To resolve this issue:
+              <p className="text-sm font-medium">
+                What you can do:
               </p>
               <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                 <li>Verify your Grok endpoint is set to <code className="text-xs bg-muted px-1 py-0.5 rounded">https://api.x.ai/v1</code></li>
-                <li>Check that your API key is correct and has not expired</li>
-                <li>Verify your prompt and settings are valid</li>
-                <li>If using reference images, try removing them or using different images</li>
-                <li>Try again with different settings</li>
+                <li>Check that your API key is correct and active</li>
+                <li>Try a simpler prompt or different settings</li>
+                <li>If using reference images, try without them</li>
               </ul>
             </div>
 
-            {onBackToPrompt && (
-              <Button 
-                onClick={onBackToPrompt}
-                className="w-full"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Prompt
-              </Button>
-            )}
+            <div className="flex flex-col gap-2 pt-2">
+              {onBackToPrompt && (
+                <Button 
+                  onClick={onBackToPrompt}
+                  variant="default"
+                  className="w-full"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Prompt
+                </Button>
+              )}
+              {onTryAgain && (
+                <Button 
+                  onClick={onTryAgain}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -153,6 +173,8 @@ export default function ClipSegmentsList({
           Your video clips are being created
         </p>
       </div>
+
+      {isGenerating && <GrokLiveView />}
 
       <Card className="border-2">
         <CardHeader>
